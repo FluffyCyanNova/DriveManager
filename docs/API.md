@@ -73,7 +73,7 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 
 `GET /api/settings/runtime` includes `commit` and `build_date` (set when the Docker image is built by `scripts\start.ps1` / `update.ps1`; `null` otherwise).
 
-**Sidebar order and pins.** `GET /api/settings/sidebar` returns `{order, pinned, default, default_pinned, customized}`. `PUT` takes `{"order": [...], "pinned": [...]}` using the keys `dashboard`, `uploads`, `files`, `trash`, `accounts`, `virtual`, `activity`, `analytics`, `settings` (that's also the default order) (unknown or duplicate keys are dropped, missing ones appended to `order`), and `DELETE` resets both. Pinned items are shown first, in `pinned` order.
+**Sidebar order and pins.** `GET /api/settings/sidebar` returns `{order, pinned, default, default_pinned, customized}`. `PUT` takes `{"order": [...], "pinned": [...]}` using the keys `dashboard`, `uploads`, `files`, `trash`, `accounts`, `virtual`, `activity`, `analytics` (that's also the default order; `settings` from older versions is dropped, since Settings is now a fixed icon) (unknown or duplicate keys are dropped, missing ones appended to `order`), and `DELETE` resets both. Pinned items are shown first, in `pinned` order.
 
 **Sharing.** `GET .../sharing` returns `{link, people, can_share, web_view_link, ...}`, where `link` is `null` (Restricted) or the role for *anyone with the link*. `PUT .../sharing/link` takes `{"role": "reader" | "commenter" | "writer" | null}`. `POST .../sharing/people` takes `{"emails": [...], "role", "notify", "message"}` and returns the new state plus `failed: [{email, message}]` for addresses Google rejected. `PATCH` changes one person's role and `DELETE` removes their access; the owner can't be removed.
 

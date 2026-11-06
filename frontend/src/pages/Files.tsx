@@ -275,7 +275,7 @@ function DriveBrowser() {
   ];
   const rowMenu = (it: DriveItem) => (sel.has(it.id) && sel.size > 1
     ? { items: bulkMenu(items.filter((i) => sel.has(i.id))), title: `${sel.size} selected` }
-    : { items: menu(it), title: it.name });
+    : { items: menu(it), title: m.file(it.name) });
 
   const menu = (it: DriveItem) => [
     { label: "Open in Google Drive", icon: <ExternalLink className="h-4 w-4" />, hidden: !it.web_view_link, onSelect: () => window.open(it.web_view_link!, "_blank", "noopener") },
@@ -321,7 +321,7 @@ function DriveBrowser() {
       {(stack.length > 0 && !q) && (
         <nav aria-label="Folder path" className="mb-3 flex flex-wrap items-center gap-1 text-sm">
           <button className="rounded px-1.5 py-0.5 hover:bg-accent" onClick={() => setStack([])}>{{ my_drive: "My Drive", shared_with_me: "Shared with me", shared_drive: "Shared drives", trash: "Trash" }[loc]}</button>
-          {stack.map((c, i) => <span key={`${c.id}${i}`} className="flex items-center gap-1"><ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /><button className={cn("rounded px-1.5 py-0.5 hover:bg-accent", i === stack.length - 1 && "font-semibold")} onClick={() => setStack(stack.slice(0, i + 1))}>{c.name}</button></span>)}
+          {stack.map((c, i) => <span key={`${c.id}${i}`} className="flex items-center gap-1"><ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /><button className={cn("rounded px-1.5 py-0.5 hover:bg-accent", i === stack.length - 1 && "font-semibold")} onClick={() => setStack(stack.slice(0, i + 1))}>{m.file(c.name)}</button></span>)}
         </nav>)}
       {loc === "trash" && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-sm">
@@ -349,7 +349,7 @@ function DriveBrowser() {
         {sharedRoot ? (
           drives.isLoading ? <Spinner /> : (drives.data ?? []).filter((d) => !accountId || d.account_id === accountId).length === 0 ? <EmptyState icon={<Users className="h-8 w-8" />} title="No shared drives">None of your connected accounts are members of a shared drive.</EmptyState> : (
             <ul className="divide-y">{drives.data!.filter((d) => !accountId || d.account_id === accountId).map((d) => (
-              <li key={d.account_id + d.id}><button onClick={() => setStack([{ accountId: d.account_id, id: d.id, name: d.name }])} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-muted"><Users className="h-4 w-4 text-primary" /><span className="flex-1 font-medium">{d.name}</span><AccountChip id={d.account_id} email={m.email(d.account_email)} /></button></li>))}</ul>)
+              <li key={d.account_id + d.id}><button onClick={() => setStack([{ accountId: d.account_id, id: d.id, name: d.name }])} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-muted"><Users className="h-4 w-4 text-primary" /><span className="flex-1 font-medium">{m.file(d.name)}</span><AccountChip id={d.account_id} email={m.email(d.account_email)} /></button></li>))}</ul>)
         ) : files.isLoading ? <Spinner /> : items.length === 0 ? (
           <EmptyState icon={<FolderTree className="h-8 w-8" />} title={q ? "No matches" : loc === "trash" ? "Trash is empty" : (accounts.data ?? []).length === 0 ? "No accounts connected" : "Nothing in this folder"}>
             {!q && (accounts.data ?? []).some((a) => !a.initial_scan_complete) ? "Some accounts are still being indexed for the first time. Files appear as the scan progresses." : undefined}</EmptyState>
@@ -373,31 +373,31 @@ function DriveBrowser() {
                 }}
                 onContextMenu={(e) => { const m = rowMenu(it); if (ctx.onContextMenu(e, m.items, m.title)) setCtxRow(it.id); }}
                 {...longPress((x, y) => { const m = rowMenu(it); ctx.openAt(x, y, m.items, m.title); setCtxRow(it.id); })}>
-                <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${it.name}`} title="Shift + click to select a range" checked={sel.has(it.id)}
+                <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${m.file(it.name)}`} title="Shift + click to select a range" checked={sel.has(it.id)}
                   onClick={(e) => { shiftHeld.current = e.shiftKey; }} onChange={(e) => toggleRow(it.id, e.target.checked)} /></td>
                 <td data-col="name" className="px-2 py-2"><div className="flex min-w-0 items-center gap-2.5"><FileIcon mime={it.mime_type} />
-                  {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={it.name} onClick={() => openFolder(it)}>{it.name}</button> : <button className="truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it)}>{it.name}</button>}
+                  {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={m.file(it.name)} onClick={() => openFolder(it)}>{m.file(it.name)}</button> : <button className="truncate text-left hover:underline" title={`${m.file(it.name)}: download or open in Google Drive`} onClick={() => openFile(it)}>{m.file(it.name)}</button>}
                   {it.location === "SHARED_WITH_ME" && <span className="shrink-0 rounded bg-secondary px-1.5 text-[11px] text-muted-foreground">shared</span>}</div>
-                  {flat && it.parent && <button className="ml-7 block max-w-full truncate text-left text-xs text-muted-foreground hover:text-foreground hover:underline" title={`Open the folder “${it.parent.name}”`}
-                    onClick={() => { setAllFiles(false); setStack([{ accountId: it.account_id, id: it.parent!.id, name: it.parent!.name }]); }}>in {it.parent.name}</button>}</td>
+                  {flat && it.parent && <button className="ml-7 block max-w-full truncate text-left text-xs text-muted-foreground hover:text-foreground hover:underline" title={`Open the folder “${m.file(it.parent.name)}”`}
+                    onClick={() => { setAllFiles(false); setStack([{ accountId: it.account_id, id: it.parent!.id, name: it.parent!.name }]); }}>in {m.file(it.parent.name)}</button>}</td>
                 <td data-col="account" className="hidden px-2 py-2 md:table-cell"><AccountChip id={it.account_id} email={it.account_email} /></td>
                 <td data-col="modified" className="hidden px-2 py-2 text-muted-foreground sm:table-cell"><span className="block truncate">{when(it.modified_time)}</span></td>
                 <td data-col="size" className="px-2 py-2 text-right text-muted-foreground"><span className="block truncate">{it.is_folder ? "—" : bytes(it.size)}</span></td>
                 <td />
-                <td className={cn(STICKY_TD, sel.has(it.id) && "before:bg-accent/50 group-hover:before:bg-accent/50 group-hover:shadow-[inset_0_0_0_9999px_rgb(0_0_0/0.18),-6px_0_6px_-6px_rgb(0_0_0/0.35)]")}><div className="relative"><RowMenu items={menu(it)} label={`Actions for ${it.name}`} /></div></td></tr>))}</tbody></table></div>)}
+                <td className={cn(STICKY_TD, sel.has(it.id) && "before:bg-accent/50 group-hover:before:bg-accent/50 group-hover:shadow-[inset_0_0_0_9999px_rgb(0_0_0/0.18),-6px_0_6px_-6px_rgb(0_0_0/0.35)]")}><div className="relative"><RowMenu items={menu(it)} label={`Actions for ${m.file(it.name)}`} /></div></td></tr>))}</tbody></table></div>)}
         {!sharedRoot && total > 100 && (
           <div className="flex items-center justify-between border-t px-4 py-2.5 text-sm"><span className="text-muted-foreground">{total.toLocaleString()} items</span>
             <div className="flex items-center gap-2"><Button size="icon" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></Button><span>Page {page} of {pages}</span><Button size="icon" variant="outline" disabled={page >= pages} onClick={() => setPage(page + 1)} aria-label="Next page"><ChevronRight className="h-4 w-4" /></Button></div></div>)}
       </Card>
 
       {renaming && <PromptDialog open onOpenChange={(o) => !o && setRenaming(null)} title="Rename" label="New name" initial={renaming.name} confirmLabel="Rename" busy={rename.isPending} onSubmit={(name) => rename.mutate({ it: renaming, name })} />}
-      {newFolder && <PromptDialog open onOpenChange={setNewFolder} title="New folder" label={`Folder name${top ? ` (inside ${top.name})` : ""}`} confirmLabel="Create" busy={mkdir.isPending} onSubmit={(n) => mkdir.mutate(n)} />}
-      <Dialog open={!!moving} onOpenChange={(o) => !o && setMoving(null)} title={`Move “${moving?.name ?? ""}”`} description="Items can be moved within the same account.">
+      {newFolder && <PromptDialog open onOpenChange={setNewFolder} title="New folder" label={`Folder name${top ? ` (inside ${m.file(top.name)})` : ""}`} confirmLabel="Create" busy={mkdir.isPending} onSubmit={(n) => mkdir.mutate(n)} />}
+      <Dialog open={!!moving} onOpenChange={(o) => !o && setMoving(null)} title={`Move “${m.file(moving?.name ?? "")}”`} description="Items can be moved within the same account.">
         {moving && <FolderPicker accountId={moving.account_id} label="Move here" onCancel={() => setMoving(null)} onPick={(f) => move.mutate({ it: moving, dest: f.id ?? "root" })} />}</Dialog>
       <DoubleConfirm open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete permanently?" confirmLabel="Delete forever" busy={purge.isPending}
         items={deleting ? [{ name: deleting.name, size: deleting.size, isFolder: deleting.is_folder }] : []} onConfirm={() => deleting && purge.mutate(deleting)}
         alternative={deleting && !deleting.trashed && deleting.can.trash ? { label: "Move to trash instead", onSelect: () => { trash.mutate(deleting); setDeleting(null); } } : undefined}>
-        “{deleting?.name}” will be removed from Google Drive right away{deleting && !deleting.trashed ? ", without going to the trash first" : ""}.
+        “{m.file(deleting?.name)}” will be removed from Google Drive right away{deleting && !deleting.trashed ? ", without going to the trash first" : ""}.
         {deleting?.is_folder ? " Everything inside this folder that you own is deleted with it." : ""} This can't be undone.</DoubleConfirm>
       <DoubleConfirm open={!!bulkDeleting} onOpenChange={(o) => !o && setBulkDeleting(null)} title={`Delete ${bulkDeleting?.length ?? 0} item(s) permanently?`} confirmLabel="Delete forever" busy={bulk.isPending}
         items={(bulkDeleting ?? []).map((i) => ({ name: i.name, size: i.size, isFolder: i.is_folder }))}

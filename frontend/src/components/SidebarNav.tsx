@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowDown, ArrowUp, BarChart3, FolderTree, GripVertical, LayoutDashboard, Link2, Pin, PinOff, Settings, Trash2, UploadCloud, Users } from "lucide-react";
+import { Activity, ArrowDown, ArrowUp, BarChart3, FolderTree, GripVertical, LayoutDashboard, Link2, Pin, PinOff, Trash2, UploadCloud, Users } from "lucide-react";
 import { useState, type DragEvent, type KeyboardEvent } from "react";
 import { create } from "zustand";
 import { Link, useLocation } from "react-router-dom";
@@ -21,7 +21,6 @@ export const NAV_ITEMS: Record<string, NavItem> = Object.fromEntries(([
   { key: "virtual", to: "/files?view=virtual", label: "Virtual folders", icon: Link2 },
   { key: "activity", to: "/activity", label: "Activity", icon: Activity },
   { key: "analytics", to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { key: "settings", to: "/settings", label: "Settings", icon: Settings },
 ] as NavItem[]).map((i) => [i.key, i]));
 const FALLBACK: SidebarState = { order: Object.keys(NAV_ITEMS), pinned: ["dashboard"], default: Object.keys(NAV_ITEMS), default_pinned: ["dashboard"], customized: false };
 

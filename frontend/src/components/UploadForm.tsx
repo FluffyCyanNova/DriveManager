@@ -12,19 +12,21 @@ import { useUploads, type UploadPrefill } from "@/stores/uploads";
 import type { VFolder } from "@/types";
 import { cn } from "@/utils/cn";
 import { bytes } from "@/utils/format";
-import { useMask } from "@/utils/privacy";
+import { fakeName, useMask } from "@/utils/privacy";
 
 /** Virtual folder paths ("Work / Invoices") in tree order. */
 export function useVirtualPaths() {
   const vtree = useQuery({ queryKey: ["virtual-tree"], queryFn: () => api.get<VFolder[]>("/api/virtual-folders") });
+  const fake = useMask().fakeNames;
   return useMemo(() => {
+    const file = (n: string) => (fake ? fakeName(n) : n);
     const all = vtree.data ?? [];
     const kids = (pid: string | null) => all.filter((f) => f.parent_id === pid).sort((a, b) => a.name.localeCompare(b.name));
     const out: { id: string; path: string }[] = [];
-    const walk = (pid: string | null, prefix: string) => kids(pid).forEach((f) => { const path = prefix ? `${prefix} / ${f.name}` : f.name; out.push({ id: f.id, path }); walk(f.id, path); });
+    const walk = (pid: string | null, prefix: string) => kids(pid).forEach((f) => { const path = prefix ? `${prefix} / ${file(f.name)}` : file(f.name); out.push({ id: f.id, path }); walk(f.id, path); });
     walk(null, "");
     return out;
-  }, [vtree.data]);
+  }, [vtree.data, fake]);
 }
 
 /**
@@ -81,7 +83,7 @@ export function UploadForm({ prefill, onQueued, compact, initialFiles }: { prefi
             <Select id="up-acct" value={effectiveAccount} onChange={(e) => { setAccountId(e.target.value); setFolder(null); }}>
               {active.map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}{a.quota?.free != null ? ` — ${bytes(a.quota.free)} free` : ""}</option>)}</Select></div>
           <div className="space-y-1.5"><Label>Folder</Label>
-            <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setPickFolder(true)} disabled={!effectiveAccount}><FolderOpen className="h-4 w-4" /><span className="truncate">{folderForAccount?.name ?? "My Drive (root)"}</span></Button></div>
+            <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setPickFolder(true)} disabled={!effectiveAccount}><FolderOpen className="h-4 w-4" /><span className="truncate">{m.file(folderForAccount?.name) ?? "My Drive (root)"}</span></Button></div>
         </div>)}
       <div className={cn("space-y-1.5", !compact && "sm:max-w-[calc(50%-0.5rem)]")}><Label htmlFor="up-vfolder">Also add to virtual folder <span className="font-normal text-muted-foreground">(optional)</span></Label>
         <Select id="up-vfolder" value={chosenVirtual} onChange={(e) => setVirtualFolderId(e.target.value)}>
@@ -101,9 +103,9 @@ export function UploadForm({ prefill, onQueued, compact, initialFiles }: { prefi
           <ul className="max-h-40 divide-y overflow-y-auto rounded-md border text-sm">
             {staged.map((f, i) => (
               <li key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-1.5">
-                <span className="min-w-0 flex-1 truncate" title={f.name}>{f.name}</span>
+                <span className="min-w-0 flex-1 truncate" title={m.file(f.name)}>{m.file(f.name)}</span>
                 <span className="shrink-0 text-xs text-muted-foreground">{bytes(f.size)}</span>
-                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}
+                <button type="button" aria-label={`Remove ${m.file(f.name)}`} onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}
                   className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
               </li>))}
           </ul>

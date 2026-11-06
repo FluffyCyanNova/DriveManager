@@ -16,12 +16,14 @@ import { bytes, when } from "@/utils/format";
 import { useFileOpener } from "@/components/FileOpen";
 import { copyLink, ShareDialog } from "@/components/ShareDialog";
 import { useUploads } from "@/stores/uploads";
+import { useMask } from "@/utils/privacy";
 
 type Dlg = { kind: "new"; parent: string | null } | { kind: "rename"; f: VFolder } | { kind: "delete"; f: VFolder } | null;
 
 export default function VirtualBrowser() {
   const qc = useQueryClient();
   const tree = useQuery({ queryKey: ["virtual-tree"], queryFn: () => api.get<VFolder[]>("/api/virtual-folders") });
+  const m = useMask();
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [dlg, setDlg] = useState<Dlg>(null);
@@ -50,8 +52,8 @@ export default function VirtualBrowser() {
         <li key={f.id}>
           <div className={cn("group flex items-center gap-1 rounded-md pr-1 text-sm hover:bg-muted", selected === f.id && "bg-accent text-accent-foreground")} style={{ paddingLeft: depth * 14 + 4 }}>
             <button aria-label={isOpen ? "Collapse" : "Expand"} className={cn("rounded p-0.5", !kids && "invisible")} onClick={() => { const n = new Set(open); isOpen ? n.delete(f.id) : n.add(f.id); setOpen(n); }}>{isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</button>
-            <button className="flex-1 truncate py-1.5 text-left" onClick={() => setSelected(f.id)}>{f.name} <span className="text-xs text-muted-foreground">{f.item_count || ""}</span></button>
-            <RowMenu label={`Actions for ${f.name}`} items={[
+            <button className="flex-1 truncate py-1.5 text-left" onClick={() => setSelected(f.id)}>{m.file(f.name)} <span className="text-xs text-muted-foreground">{f.item_count || ""}</span></button>
+            <RowMenu label={`Actions for ${m.file(f.name)}`} items={[
               { label: "New sub-folder", icon: <FolderPlus className="h-4 w-4" />, onSelect: () => setDlg({ kind: "new", parent: f.id }) },
               { label: "Rename", icon: <Pencil className="h-4 w-4" />, onSelect: () => setDlg({ kind: "rename", f }) },
               { label: "Delete folder", icon: <Trash2 className="h-4 w-4" />, danger: true, onSelect: () => setDlg({ kind: "delete", f }) }]} />
@@ -84,27 +86,27 @@ export default function VirtualBrowser() {
       </Card>
       <Card className="min-h-64 overflow-hidden">
         {!current ? <EmptyState title="Pick a virtual folder">Virtual folders are shortcuts you organise yourself. Add files from the Google Drive tab with “Add to virtual folder”.</EmptyState>
-          : items.isLoading ? <Spinner /> : (items.data?.items ?? []).length === 0 ? <EmptyState title={`${current.name} is empty`}>Use “Add to virtual folder” on any file in the Google Drive tab.</EmptyState> : (
+          : items.isLoading ? <Spinner /> : (items.data?.items ?? []).length === 0 ? <EmptyState title={`${m.file(current.name)} is empty`}>Use “Add to virtual folder” on any file in the Google Drive tab.</EmptyState> : (
             <ul className="divide-y">{items.data!.items.map((it) => (
               <li key={it.item_id} className={cn("flex items-center gap-3 px-4 py-2.5 text-sm", ctxRow === it.item_id && "bg-muted/60 outline outline-1 -outline-offset-1 outline-primary/50")}
-                onContextMenu={(e) => { if (ctx.onContextMenu(e, menu(it), it.name ?? undefined)) setCtxRow(it.item_id); }}
-                {...longPress((x, y) => { ctx.openAt(x, y, menu(it), it.name ?? undefined); setCtxRow(it.item_id); })}>
+                onContextMenu={(e) => { if (ctx.onContextMenu(e, menu(it), m.file(it.name) ?? undefined)) setCtxRow(it.item_id); }}
+                {...longPress((x, y) => { ctx.openAt(x, y, menu(it), m.file(it.name) ?? undefined); setCtxRow(it.item_id); })}>
                 <FileIcon mime={it.mime_type ?? ""} />
                 <div className="min-w-0 flex-1">{it.file && !it.file.is_folder && it.status !== "missing"
-                  ? <button className="block max-w-full truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it.file!)}>{it.name}</button>
-                  : <p className={cn("truncate", it.status === "missing" && "text-muted-foreground line-through")}>{it.name}</p>}<AccountChip id={it.account_id} email={it.account_email} /></div>
+                  ? <button className="block max-w-full truncate text-left hover:underline" title={`${m.file(it.name)}: download or open in Google Drive`} onClick={() => openFile(it.file!)}>{m.file(it.name)}</button>
+                  : <p className={cn("truncate", it.status === "missing" && "text-muted-foreground line-through")}>{m.file(it.name)}</p>}<AccountChip id={it.account_id} email={it.account_email} /></div>
                 {it.status === "missing" && <Badge tone="danger">No longer in Drive</Badge>}
                 {it.status === "trashed" && <Badge tone="warning">In trash</Badge>}
                 {it.status === "inaccessible" && <Badge tone="warning">Account needs reconnecting</Badge>}
                 <span className="hidden w-20 text-right text-muted-foreground sm:block">{it.file && !it.file.is_folder ? bytes(it.file.size) : ""}</span>
                 <span className="hidden w-36 text-muted-foreground lg:block">{it.file ? when(it.file.modified_time) : ""}</span>
-                <RowMenu items={menu(it)} label={`Actions for ${it.name}`} /></li>))}</ul>)}
+                <RowMenu items={menu(it)} label={`Actions for ${m.file(it.name)}`} /></li>))}</ul>)}
       </Card>
 
       {dlg?.kind === "new" && <PromptDialog open onOpenChange={() => setDlg(null)} title="New virtual folder" label="Folder name" confirmLabel="Create" busy={create.isPending} onSubmit={(name) => create.mutate({ name, parent: dlg.parent })} />}
       {dlg?.kind === "rename" && <PromptDialog open onOpenChange={() => setDlg(null)} title="Rename virtual folder" label="Folder name" initial={dlg.f.name} confirmLabel="Rename" busy={rename.isPending} onSubmit={(name) => rename.mutate({ id: dlg.f.id, name })} />}
       <ConfirmDialog open={dlg?.kind === "delete"} onOpenChange={() => setDlg(null)} title="Delete virtual folder?" confirmLabel="Delete folder" danger busy={del.isPending} onConfirm={() => dlg?.kind === "delete" && del.mutate(dlg.f.id)}>
-        “{dlg?.kind === "delete" ? dlg.f.name : ""}” and its sub-folders will be removed from DriveManager. <b>Your files in Google Drive are not touched.</b></ConfirmDialog>
+        “{dlg?.kind === "delete" ? m.file(dlg.f.name) : ""}” and its sub-folders will be removed from DriveManager. <b>Your files in Google Drive are not touched.</b></ConfirmDialog>
       <VirtualFolderPicker open={!!movingItem} title="Move to another virtual folder" confirmLabel="Move" folders={folders} excludeId={selected ?? undefined} onClose={() => setMovingItem(null)} onPick={(to) => movingItem && moveItem.mutate({ it: movingItem, to })} />
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       {openFileDialog}

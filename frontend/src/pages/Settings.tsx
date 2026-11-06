@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, FolderOpen, Pin, PinOff, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { AccountChip, onError, PageHeader, Spinner } from "@/components/Common";
 import { FolderPicker } from "@/components/FolderPicker";
 import { NAV_ITEMS, useSidebar, useSidebarWidth } from "@/components/SidebarNav";
@@ -14,7 +15,7 @@ import { api } from "@/services/api";
 import { toast } from "@/stores/ui";
 import type { AllocationSettings, Rule } from "@/types";
 import { ago, bytes } from "@/utils/format";
-import { useMask } from "@/utils/privacy";
+import { fakeName, useMask, usePrivacy } from "@/utils/privacy";
 
 const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
 const rid = () => Math.random().toString(36).slice(2, 12);
@@ -56,7 +57,7 @@ export default function SettingsPage() {
                 <li key={id} className="flex flex-wrap items-center gap-3 px-3 py-2.5 text-sm">
                   <span className="w-5 text-muted-foreground">{i + 1}</span><div className="min-w-0 flex-1"><AccountChip id={id} email={email(id)} />
                     <p className="text-xs text-muted-foreground">{accs.find((a) => a.id === id)?.quota?.free != null ? `${bytes(accs.find((a) => a.id === id)!.quota!.free)} free` : "No limit reported"}</p></div>
-                  <Button size="sm" variant="outline" onClick={() => setTarget({ kind: "default", accountId: id })}><FolderOpen className="h-3.5 w-3.5" />{draft.account_defaults[id]?.folder_name ?? "My Drive root"}</Button>
+                  <Button size="sm" variant="outline" onClick={() => setTarget({ kind: "default", accountId: id })}><FolderOpen className="h-3.5 w-3.5" />{m.file(draft.account_defaults[id]?.folder_name) ?? "My Drive root"}</Button>
                   <Button size="icon" variant="ghost" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" aria-label="Move down" disabled={i === order.length - 1} onClick={() => move(i, 1)}><ArrowDown className="h-4 w-4" /></Button></li>))}</ul></div>
 
@@ -74,7 +75,7 @@ export default function SettingsPage() {
                       <div className="space-y-1"><Label className="text-xs text-muted-foreground">Name contains</Label><Input placeholder="invoice" value={r.name_contains ?? ""} onChange={(e) => setRule(r.id, { name_contains: e.target.value || null })} /></div></div>
                     <div className="flex flex-wrap items-center gap-3 text-sm"><span className="text-muted-foreground">Send matching files to</span>
                       <Select aria-label="Target account" className="w-60" value={r.account_id} onChange={(e) => setRule(r.id, { account_id: e.target.value, folder_id: null, folder_name: null })}>{accs.map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}</option>)}</Select>
-                      <Button size="sm" variant="outline" onClick={() => setTarget({ kind: "rule", id: r.id, accountId: r.account_id })}><FolderOpen className="h-3.5 w-3.5" />{r.folder_name ?? "My Drive root"}</Button></div>
+                      <Button size="sm" variant="outline" onClick={() => setTarget({ kind: "rule", id: r.id, accountId: r.account_id })}><FolderOpen className="h-3.5 w-3.5" />{m.file(r.folder_name) ?? "My Drive root"}</Button></div>
                     {!r.extensions.length && !r.mime_prefixes.length && !r.name_contains && <p className="text-xs text-warning">This rule has no conditions yet, so it won't match anything.</p>}
                   </li>))}</ul>)}</div>
           </CardContent>
@@ -98,6 +99,7 @@ export default function SettingsPage() {
             <Row k="Free staging disk" v={bytes(health.data?.staging_free_bytes)} />
             <Row k="Failed uploads kept for" v={`${runtime.data?.staging_retention_hours} h`} />
           </dl></CardContent></Card>
+        <DeveloperCard />
         <AboutCard version={runtime.data?.version} commit={runtime.data?.commit} buildDate={runtime.data?.build_date} />
       </div>
 
@@ -161,6 +163,31 @@ function SidebarCard() {
 }
 
 const REPO = "https://github.com/FluffyCyanNova/DriveManager";
+
+/** Developer options. Saved in this browser only. */
+function DeveloperCard() {
+  const fake = usePrivacy((s) => s.fakeNames);
+  const setFake = usePrivacy((s) => s.setFakeNames);
+  const loc = useLocation();
+  // The sidebar's "Demo" badge links to /settings#developer.
+  useEffect(() => { if (loc.hash === "#developer") document.getElementById("developer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [loc.hash]);
+  return (
+    <Card id="developer" className="scroll-mt-6"><CardHeader><CardTitle>Developer</CardTitle><CardDescription>For screenshots, recordings and demos. Saved in this browser only.</CardDescription></CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <input type="checkbox" className="mt-0.5" checked={fake} onChange={(e) => setFake(e.target.checked)} />
+          <span><span className="font-medium">Fake file and folder names</span>
+            <span className="block text-muted-foreground">
+              Every file, folder, shared drive and virtual folder name is shown as a made-up name built from ordinary words,
+              for example “{fakeName("Tax return 2024.pdf")}”. The same real name always gets the same fake name, and the extension
+              and icon stay. Display only: nothing is renamed, search still matches the real names, and sizes and storage are real.
+              Turn on Privacy mode as well to hide email addresses. A “Demo” badge shows in the sidebar while this is on.
+            </span></span>
+        </label>
+        {fake && <p className="text-xs text-muted-foreground">The Rename dialog still shows the real name, so renaming doesn't save a fake name by mistake.</p>}
+      </CardContent></Card>
+  );
+}
 
 function AboutCard({ version, commit, buildDate }: { version?: string; commit?: string | null; buildDate?: string | null }) {
   const sha = commit && commit !== "unknown" ? commit.replace("+changes", "") : null;

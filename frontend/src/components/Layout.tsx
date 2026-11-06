@@ -1,5 +1,5 @@
-import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Sun, UploadCloud } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AlertTriangle, Eye, EyeOff, FlaskConical, LogOut, Moon, RefreshCw, Search, Settings, Sun, UploadCloud } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch, useSearchShortcut } from "@/components/GlobalSearch";
 import { SIDEBAR_ICONS, SIDEBAR_MAX, SIDEBAR_MIN, SidebarNav, useSidebarWidth } from "@/components/SidebarNav";
 import { Toaster } from "@/components/Toaster";
@@ -59,6 +59,8 @@ export default function Layout() {
   const navigate = useNavigate();
   const closeMobileSearch = () => { setMobileSearch(false); if (searching) navigate("/files", { replace: true }); };
   const hideLabel = m.hide ? "Privacy mode: on (emails hidden)" : "Privacy mode: off";
+  const onSettings = loc.pathname === "/settings";
+  const demoTitle = "Fake file and folder names are on (Settings > Developer). Display only.";
   useEvents();
   const { dark, toggleDark } = useUI();
   const auth = useAuth();
@@ -104,9 +106,11 @@ export default function Layout() {
         <div className={cn("flex items-center gap-2.5 px-4 py-3.5 md:py-5", iconsOnly && "md:justify-center md:px-0")}>
           <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
             className="shrink-0 rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
+          {iconsOnly && m.fakeNames && <Link to="/settings#developer" title={demoTitle} aria-label={demoTitle} className="absolute left-1/2 top-[3.6rem] hidden -translate-x-1/2 rounded-full border border-amber-500/50 bg-amber-500/10 px-1 text-[9px] font-medium uppercase text-amber-700 dark:text-amber-300 md:block">Demo</Link>}
           <div className={cn("flex min-w-0 flex-1 flex-col leading-tight md:flex-none", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
             <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
               className="max-w-full truncate text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline md:w-fit">DriveManager</a>
+            {m.fakeNames && <Link to="/settings#developer" title={demoTitle} className="mt-0.5 flex w-fit items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"><FlaskConical className="h-3 w-3" />Demo</Link>}
             <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
               className="max-w-full truncate text-[11px] text-muted-foreground hover:text-primary hover:underline md:w-fit">@FluffyCyanNova</a>
           </div>
@@ -122,6 +126,7 @@ export default function Layout() {
             <button onClick={syncAll} disabled={busy || connected.length === 0} className="rounded p-1.5 hover:bg-accent disabled:opacity-60" aria-label={syncLabel} title={syncLabel}><RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} /></button>
             <button onClick={toggleHideEmails} className="rounded p-1.5 hover:bg-accent" aria-label={hideLabel} aria-pressed={m.hide} title={hideLabel}>{m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             <button onClick={toggleDark} className="rounded p-1.5 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
+            <Link to="/settings" className={cn("rounded p-1.5 hover:bg-accent", onSettings && "bg-accent text-primary")} aria-label="Settings" title="Settings" aria-current={onSettings ? "page" : undefined}><Settings className="h-4 w-4" /></Link>
             <button onClick={logout} className="rounded p-1.5 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
@@ -135,10 +140,11 @@ export default function Layout() {
               [syncLabel, <RefreshCw key="r" className={cn("h-4 w-4", busy && "animate-spin")} />, syncAll, busy || connected.length === 0],
               [hideLabel, m.hide ? <EyeOff key="e" className="h-4 w-4" /> : <Eye key="e" className="h-4 w-4" />, toggleHideEmails, false],
               ["Toggle dark mode", dark ? <Sun key="d" className="h-4 w-4" /> : <Moon key="d" className="h-4 w-4" />, toggleDark, false],
+              ["Settings", <Settings key="g" className="h-4 w-4" />, () => navigate("/settings"), false],
               [`Sign out (${auth.username})`, <LogOut key="l" className="h-4 w-4" />, logout, false],
             ] as const).map(([label, icon, onClick, disabled]) => (
               <button key={label} onClick={onClick} disabled={disabled} aria-label={label} title={label}
-                className={cn("flex h-9 w-9 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-60", label === hideLabel && m.hide && "border-primary/50 text-foreground")}>{icon}</button>
+                className={cn("flex h-9 w-9 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-60", (label === hideLabel && m.hide) && "border-primary/50 text-foreground", label === "Settings" && onSettings && "border-primary/50 bg-accent text-primary")} aria-current={label === "Settings" && onSettings ? "page" : undefined}>{icon}</button>
             ))}
           </div>)}
         <div className={cn("mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:w-[var(--sb)]", iconsOnly ? "md:hidden" : "md:block")}>
@@ -164,8 +170,9 @@ export default function Layout() {
           <div className="flex h-9 items-center justify-between rounded-md border pl-3 pr-1.5 text-sm">
             <span className="truncate text-muted-foreground">{auth.username}</span>
             <div className="flex gap-1">
-              <button onClick={toggleDark} className="rounded p-1 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
-              <button onClick={logout} className="rounded p-1 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
+              <button onClick={toggleDark} className="rounded p-1 hover:bg-accent" aria-label="Toggle dark mode" title="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
+              <Link to="/settings" className={cn("rounded p-1 hover:bg-accent", onSettings && "bg-accent text-primary")} aria-label="Settings" title="Settings" aria-current={onSettings ? "page" : undefined}><Settings className="h-4 w-4" /></Link>
+              <button onClick={logout} className="rounded p-1 hover:bg-accent" aria-label="Sign out" title="Sign out"><LogOut className="h-4 w-4" /></button>
             </div>
           </div>
         </div>

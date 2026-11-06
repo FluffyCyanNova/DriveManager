@@ -72,7 +72,7 @@ export default function Analytics() {
         <Card className="lg:col-span-2 overflow-hidden"><CardContent className="pb-2 pt-5"><h2 className="mb-1 font-semibold">Largest files</h2></CardContent>
           {data.largest.length === 0 ? <p className="px-5 pb-6 text-sm text-muted-foreground">Nothing indexed yet.</p> : (
             <ul className="divide-y">{data.largest.map((f) => (
-              <li key={f.id} className="flex items-center gap-3 px-5 py-2.5 text-sm"><FileIcon mime={f.mime_type} /><span className="min-w-0 flex-1 truncate">{f.name}</span><span className="hidden md:block"><AccountChip id={f.account_id} email={f.account_email} /></span><span className="w-20 text-right text-muted-foreground">{bytes(f.size)}</span></li>))}</ul>)}
+              <li key={f.id} className="flex items-center gap-3 px-5 py-2.5 text-sm"><FileIcon mime={f.mime_type} /><span className="min-w-0 flex-1 truncate">{m.file(f.name)}</span><span className="hidden md:block"><AccountChip id={f.account_id} email={f.account_email} /></span><span className="w-20 text-right text-muted-foreground">{bytes(f.size)}</span></li>))}</ul>)}
         </Card>
       </div>
     </>

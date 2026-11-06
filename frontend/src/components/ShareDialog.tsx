@@ -72,7 +72,7 @@ export function ShareDialog({ item, onClose }: { item: DriveItem | null; onClose
         <div className="space-y-5">
           <div className="flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm">
             <FileIcon mime={item!.mime_type} />
-            <span className="min-w-0 flex-1 truncate font-medium" title={item!.name}>{item!.name}</span>
+            <span className="min-w-0 flex-1 truncate font-medium" title={m.file(item!.name)}>{m.file(item!.name)}</span>
           </div>
           {/* General access */}
           <section className="space-y-2">

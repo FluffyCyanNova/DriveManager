@@ -28,7 +28,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 * **Move to trash**, restore, **Delete permanently** (from anywhere, with a two-step confirmation that lists every item and unlocks after a short countdown), and **Empty trash** per account or for all of them.
 * **Search everything** from the sidebar (or the 🔍 icon on phones; shortcut **Ctrl + K** or **/**). Results show live on the Files page: files and folders from every account, My Drive, Shared with me and shared drives, at any depth.
 * **Resizable sidebar** (desktop): drag its right edge to make it wider or narrower. Drag it all the way left for an **icons-only** strip, and double-click the edge to switch back. Remembered in your browser; reset from Settings → Sidebar.
-* **Customisable sidebar**: **pin** items to a group at the top (hover the pin icon, or right-click / long-press for Pin, Move up and Move down); pinned items can't be dragged. Dashboard is pinned by default, and the default order is Dashboard, Uploads, Files, Trash, Accounts, Virtual folders, Activity, Analytics, Settings. Drag the others to reorder them (or **Alt + ↑/↓**). **Settings → Sidebar** lists every item with Pin and ↑/↓ buttons, which also works on phones, plus **Reset order and pins**. Saved on the server, so it's the same on every device. On phones, pinned items stay visible on the left while the rest of the top bar scrolls.
+* **Customisable sidebar**: **pin** items to a group at the top (hover the pin icon, or right-click / long-press for Pin, Move up and Move down); pinned items can't be dragged. Dashboard is pinned by default, and the default order is Dashboard, Uploads, Files, Trash, Accounts, Virtual folders, Activity, Analytics. **Settings** is the gear icon at the bottom, between the theme switch and Sign out. Drag the others to reorder them (or **Alt + ↑/↓**). **Settings → Sidebar** lists every item with Pin and ↑/↓ buttons, which also works on phones, plus **Reset order and pins**. Saved on the server, so it's the same on every device. On phones, pinned items stay visible on the left while the rest of the top bar scrolls.
 * **Sync now** in the sidebar re-indexes every connected account at once, and shows progress while the syncs run. Accounts also sync on their own schedule.
 
 **Uploads**
@@ -44,6 +44,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 
 **Privacy and security**
 * **Privacy mode**: a sidebar switch that replaces every email address in the app with a stable alias (e.g. `user-k3f9x2`). Handy for screenshots and screen sharing. Display only: nothing changes on the server.
+* **Fake file and folder names** (Settings → Developer): shows every file, folder, shared drive and virtual folder name as a made-up name built from ordinary words (e.g. *Quarterly Garden Plan.pdf*). The same name always gets the same fake name, and the extension and icon stay. Display only and saved per browser: search still matches the real names, and sizes and storage are real. A **Demo** badge shows in the sidebar while it is on. Combine it with Privacy mode for recordings.
 * Single local user with a hashed password, CSRF and origin checks, and Google refresh tokens encrypted at rest. Tokens are redacted from logs.
 * Activity history, plus backup and restore scripts.
 
@@ -94,7 +95,7 @@ Which to check: **worker** for uploads, syncs and storage refreshes; **backend**
 |---|---|
 | [docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md) | Step-by-step Google Cloud setup (read the 7-day token note) |
 | [docs/DOCKER.md](docs/DOCKER.md) | Operating it: volumes, updating, backup/restore, HTTPS, troubleshooting |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: uploads, deleting, virtual folders, Privacy mode, security model |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: uploads, deleting, virtual folders, Privacy mode, fake names, security model |
 | [docs/DATABASE.md](docs/DATABASE.md) | Tables and migrations |
 | [docs/API.md](docs/API.md) | HTTP API, including query parameters for file listing and uploads |
 

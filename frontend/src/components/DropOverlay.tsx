@@ -60,7 +60,7 @@ export function DropOverlay() {
   if (!over || !enabled) return null;
   const active = (accounts.data ?? []).filter((a) => a.status === "ACTIVE");
   const acc = active.find((a) => a.id === context.accountId) ?? active[0];
-  const where = context.folder && acc ? `to ${context.folder.name} (${m.email(acc.email)})` : acc ? `to My Drive of ${m.email(acc.email)}` : "Connect an account first";
+  const where = context.folder && acc ? `to ${m.file(context.folder.name)} (${m.email(acc.email)})` : acc ? `to My Drive of ${m.email(acc.email)}` : "Connect an account first";
   const vpath = context.virtualFolderId ? vpaths.find((v) => v.id === context.virtualFolderId)?.path : null;
 
   return (

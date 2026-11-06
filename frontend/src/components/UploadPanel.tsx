@@ -112,7 +112,7 @@ function PanelRow({ row, status, progress, m, onResend, onOpenFolder }: {
   m: ReturnType<typeof useMask>; onResend: () => void; onOpenFolder: (j: UploadJob) => void;
 }) {
   const [choosing, setChoosing] = useState(false);
-  const name = row.kind === "job" && row.job ? row.job.filename : row.item.file.name;
+  const name = m.file(row.kind === "job" && row.job ? row.job.filename : row.item.file.name);
   const mime = row.kind === "job" && row.job ? row.job.mime_type : row.item.file.type;
   const job = row.kind === "job" ? row.job : undefined;
   const reason = row.kind === "local" ? row.item.error : job?.error_message;
@@ -151,12 +151,12 @@ function Destination({ row, m }: { row: Row; m: ReturnType<typeof useMask> }) {
   let text: string, reason: string | null = null;
   if (row.kind === "local") {
     const d = row.item.dest;
-    text = d.mode === "AUTO" ? "→ Automatic (account chosen once it reaches the server)" : `→ ${m.email(emailOf(d.accountId)) ?? "account"} · ${d.folder ? `My Drive / … / ${d.folder.name}` : "My Drive"}`;
+    text = d.mode === "AUTO" ? "→ Automatic (account chosen once it reaches the server)" : `→ ${m.email(emailOf(d.accountId)) ?? "account"} · ${d.folder ? `My Drive / … / ${m.file(d.folder.name)}` : "My Drive"}`;
   } else {
     const j = row.job;
     if (!j) return null;
     if (!j.account_id) text = j.state === "FAILED" ? "→ No account chosen" : "→ Choosing account…";
-    else text = `→ ${m.email(j.account_email) ?? "account"} · ${j.destination_path ?? j.destination_folder_name ?? "My Drive"}`;
+    else text = `→ ${m.email(j.account_email) ?? "account"} · ${m.path(j.destination_path) ?? m.file(j.destination_folder_name) ?? "My Drive"}`;
     reason = j.allocation_reason ? m.text(j.allocation_reason) : null;
   }
   return (

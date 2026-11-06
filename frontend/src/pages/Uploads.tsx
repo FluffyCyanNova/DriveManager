@@ -50,7 +50,7 @@ export default function Uploads() {
         <Card className="mb-6"><CardContent className="pt-5">
           <h2 className="mb-3 font-semibold">Sending to your server</h2>
           <ul className="space-y-3">{local.map((l) => (
-            <li key={l.key} className="text-sm"><div className="flex justify-between gap-2"><span className="truncate">{l.file.name}</span>
+            <li key={l.key} className="text-sm"><div className="flex justify-between gap-2"><span className="truncate">{m.file(l.file.name)}</span>
               {l.status === "error" ? <span className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => resend(l.key)}><RotateCcw className="h-3.5 w-3.5" />Try again</Button><Button size="sm" variant="ghost" onClick={() => dismissLocal(l.key)}><X className="h-3.5 w-3.5" />Dismiss</Button></span> : <span className="text-muted-foreground">{l.status === "waiting" ? "Waiting" : `${bytes(l.sent)} / ${bytes(l.file.size)}`}</span>}</div>
               {l.status === "error" ? <p className="text-xs text-destructive">{l.error}</p> : <Progress className="mt-1.5" value={(l.sent / Math.max(l.file.size, 1)) * 100} />}</li>))}</ul>
         </CardContent></Card>)}
@@ -64,8 +64,8 @@ export default function Uploads() {
             return (
               <li key={j.id} className="space-y-2 px-5 py-4 text-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0"><p className="truncate font-medium">{j.filename}</p>
-                    <p className="text-xs text-muted-foreground">{bytes(j.size)}{j.account_id ? <> → <AccountChip id={j.account_id} email={j.account_email} /> · {j.destination_path ?? j.destination_folder_name ?? "My Drive"}</> : j.mode === "AUTO" ? " → Automatic: account not chosen yet" : " → account not chosen yet"}</p>
+                  <div className="min-w-0"><p className="truncate font-medium">{m.file(j.filename)}</p>
+                    <p className="text-xs text-muted-foreground">{bytes(j.size)}{j.account_id ? <> → <AccountChip id={j.account_id} email={j.account_email} /> · {m.path(j.destination_path) ?? m.file(j.destination_folder_name) ?? "My Drive"}</> : j.mode === "AUTO" ? " → Automatic: account not chosen yet" : " → account not chosen yet"}</p>
                     {j.virtual_folder_id && <p className="flex items-center gap-1 text-xs text-muted-foreground"><Link2 className="h-3 w-3" />{j.state === "COMPLETED" ? "Added to" : "Will be added to"} {vname(j.virtual_folder_id) ?? "a virtual folder that was removed"}</p>}</div>
                   <div className="flex items-center gap-2">
                     {j.state === "COMPLETED" ? <Badge tone="success"><CheckCircle2 className="h-3 w-3" />Done</Badge> : j.state === "FAILED" ? <Badge tone="danger"><AlertCircle className="h-3 w-3" />Failed</Badge> : j.state === "CANCELLED" ? <Badge>Cancelled</Badge> : <Badge tone="info">{j.cancel_requested ? "Cancelling" : STATE[j.state]}</Badge>}
@@ -95,7 +95,7 @@ function RetryDialog({ job, accounts, onClose, onGo, busy }: { job: UploadJob | 
   const options = accounts.filter((a) => a.id !== job?.account_id);
   const value = sel || options[0]?.id || "";
   return (
-    <Dialog open={!!job} onOpenChange={(o) => !o && onClose()} title="Retry on another account" description={job ? <>“{job.filename}” ({bytes(job.size)}) is still safely stored on your server. Choose where it should go instead. The destination folder will be reset to My Drive.</> : ""}>
+    <Dialog open={!!job} onOpenChange={(o) => !o && onClose()} title="Retry on another account" description={job ? <>“{m.file(job.filename)}” ({bytes(job.size)}) is still safely stored on your server. Choose where it should go instead. The destination folder will be reset to My Drive.</> : ""}>
       {options.length === 0 ? <p className="text-sm text-muted-foreground">There is no other connected account.</p> : (
         <div className="space-y-4"><Select aria-label="Account" value={value} onChange={(e) => setSel(e.target.value)}>
           {options.map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}{a.quota?.free != null ? ` — ${bytes(a.quota.free)} free` : ""}</option>)}</Select>

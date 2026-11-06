@@ -95,6 +95,7 @@ export function DoubleConfirm({ open, onOpenChange, title, children, confirmLabe
   /** Safer option shown between Cancel and the confirm button on step 1 (e.g. "Move to trash instead"). */
   alternative?: { label: string; onSelect: () => void };
 }) {
+  const m = useMask();
   const [step, setStep] = useState<1 | 2>(1);
   const [list, setList] = useState<DoomedItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -129,7 +130,7 @@ export function DoubleConfirm({ open, onOpenChange, title, children, confirmLabe
           <ul className="max-h-60 divide-y overflow-y-auto rounded-md border text-sm" aria-label="Items that will be deleted">
             {list.map((i, k) => (
               <li key={`${i.name}-${k}`} className="flex items-center gap-2 px-3 py-1.5">
-                <span className="min-w-0 flex-1 truncate" title={i.name}>{i.isFolder ? "📁 " : ""}{i.name}</span>
+                <span className="min-w-0 flex-1 truncate" title={m.file(i.name)}>{i.isFolder ? "📁 " : ""}{m.file(i.name)}</span>
                 {i.size != null && <span className="shrink-0 text-xs text-muted-foreground">{fmtBytes(i.size)}</span>}
               </li>))}
           </ul>)}

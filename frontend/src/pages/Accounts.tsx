@@ -90,6 +90,7 @@ export default function Accounts() {
 }
 
 function Details({ id }: { id: string }) {
+  const m = useMask();
   const q = useQuery({ queryKey: ["accounts", id], queryFn: () => api.get<Account>(`/api/accounts/${id}`) });
   if (q.isLoading) return <Spinner />;
   const a = q.data!;
@@ -97,7 +98,7 @@ function Details({ id }: { id: string }) {
     <div className="grid gap-4 rounded-md bg-muted/60 p-4 text-sm md:grid-cols-2">
       <div><p className="mb-1 font-medium">Last sync</p>{a.last_sync_job ? <p className="text-muted-foreground">{a.last_sync_job.state.toLowerCase()} ({a.last_sync_job.kind.toLowerCase()}), {a.last_sync_job.files_processed.toLocaleString()} items, {when(a.last_sync_job.finished_at)}{a.last_sync_job.error && <span className="block text-destructive">{a.last_sync_job.error}</span>}</p> : <p className="text-muted-foreground">Not synced yet.</p>}
         <p className="mb-1 mt-3 font-medium">Connected</p><p className="text-muted-foreground">{when(a.created_at)}</p></div>
-      <div><p className="mb-1 font-medium">Shared drives</p>{(a.shared_drives ?? []).length === 0 ? <p className="text-muted-foreground">None visible to this account.</p> : <ul className="space-y-0.5 text-muted-foreground">{a.shared_drives!.map((d) => <li key={d.id}>{d.name}</li>)}</ul>}
+      <div><p className="mb-1 font-medium">Shared drives</p>{(a.shared_drives ?? []).length === 0 ? <p className="text-muted-foreground">None visible to this account.</p> : <ul className="space-y-0.5 text-muted-foreground">{a.shared_drives!.map((d) => <li key={d.id}>{m.file(d.name)}</li>)}</ul>}
         <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-primary hover:underline">Google permissions page <ExternalLink className="h-3 w-3" /></a></div>
     </div>
   );

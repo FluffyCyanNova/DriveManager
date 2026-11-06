@@ -47,7 +47,8 @@ def runtime():
 
 # ---------------- sidebar order + pins (shared by every device) ----------------
 # Pinned items are shown in a group at the top, in pin order, and can't be dragged. Dashboard is pinned by default.
-SIDEBAR_DEFAULT = ["dashboard", "uploads", "files", "trash", "accounts", "virtual", "activity", "analytics", "settings"]
+# Settings is not listed: it is a fixed icon next to the theme switch. Saved orders that still contain it are cleaned up.
+SIDEBAR_DEFAULT = ["dashboard", "uploads", "files", "trash", "accounts", "virtual", "activity", "analytics"]
 SIDEBAR_DEFAULT_PINNED = ["dashboard"]
 SIDEBAR_KEY = "ui.sidebar"
 SIDEBAR_OLD_KEY = "ui.sidebar_order"          # before pins existed: a plain list without "dashboard"
