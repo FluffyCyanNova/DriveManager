@@ -63,6 +63,8 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 
 `GET /api/files` query parameters: `account_id`, `location` (`my_drive` | `shared_with_me` | `shared_drive`), `parent_id`, `q` (name search), `type` (`folder`, `document`, `spreadsheet`, `presentation`, `pdf`, `image`, `video`, `audio`, `archive`, `other`), `modified_after`, `modified_before`, `min_size`, `max_size`, `trashed`, `folders_only`, `sort` (`name` | `modified` | `size` | `type` | `account`), `direction` (`asc` | `desc`), `folders` (`first` | `last` | `mixed`, default `first`: where folders go relative to files), `page`, `page_size` (max 500).
 
+`GET /api/files/{account_id}/{file_id}/download` streams the file (`?format=` picks the export format for Google Docs/Sheets/Slides) and records a *Downloaded* activity entry. With `?check=true` it only confirms the download can start and returns `{"ok": true, "filename": ...}` (or the usual error JSON). It sends no file data and records no activity. The web app calls it before starting the real download.
+
 `DELETE /api/files/{account_id}/{file_id}` moves the item to the trash. `?permanent=true&confirm=true` deletes it permanently (it doesn't need to be in the trash first).
 
 ### uploads
