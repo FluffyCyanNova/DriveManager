@@ -252,9 +252,9 @@ function DriveBrowser() {
           {([["my_drive", "My Drive"], ["shared_with_me", "Shared with me"], ["shared_drive", "Shared drives"], ["trash", "Trash"]] as const).map(([k, t]) => (
             <button key={k} role="tab" aria-selected={loc === k} onClick={() => go(k)} className={cn("rounded px-3 py-1 text-sm", loc === k ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>{t}</button>))}
         </div>
-        <div className="relative min-w-48 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
-        {canMkdir && <Button variant="outline" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
+        {canMkdir && <Button variant="outline" className="ml-auto" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
       </div>
+      <div className="relative mb-2"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
       {/* Filters on their own row; w-auto lets each select size to its longest option so labels never get cut off. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select aria-label="Account" className="w-auto max-w-xs" value={accountId} onChange={(e) => { setAccountId(e.target.value); setStack([]); setPage(1); }}>
