@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AccountChip, DoubleConfirm, type DoomedItem, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
+import { AccountChip, DoubleConfirm, Separator, type DoomedItem, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
 import { download, ExportDialog, FileIcon, VirtualFolderPicker } from "@/components/FileBits";
 import { FolderPicker } from "@/components/FolderPicker";
 import { Button } from "@/components/ui/button";
@@ -48,8 +48,6 @@ const readFolders = (): FolderPlacement => {
   try { const v = localStorage.getItem(FOLDERS_KEY); return v === "last" || v === "mixed" ? v : "first"; } catch { return "first"; }
 };
 
-const SEPARATOR = "my-3 border-0 border-t border-border/50";
-
 export default function Files() {
   // The view lives in the URL (?view=trash|virtual) so the sidebar's Trash and Virtual folders links can open it directly.
   const [search, setSearch] = useSearchParams();
@@ -64,7 +62,7 @@ export default function Files() {
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" />{t}</button>))}
       </div>
       </div>
-      <hr className={SEPARATOR} />
+      <Separator />
       {tab === "drive" ? <DriveBrowser /> : <VirtualBrowser />}
     </>
   );
@@ -318,7 +316,7 @@ function DriveBrowser() {
             <input type="checkbox" checked={allFiles} onChange={(e) => setAllFiles(e.target.checked)} />Show all files</label>)}
       </div>
       <div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
-      <hr className={SEPARATOR} />
+      <Separator />
 
       {(stack.length > 0 && !q) && (
         <nav aria-label="Folder path" className="mb-3 flex flex-wrap items-center gap-1 text-sm">

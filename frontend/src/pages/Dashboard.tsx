@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, Plus, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
-import { AccountChip, EmptyState, PageHeader, Spinner } from "@/components/Common";
+import { AccountChip, EmptyState, PageHeader, Separator, Spinner } from "@/components/Common";
 import { StorageBar } from "@/components/StorageBar";
 import { StorageOverview } from "@/components/StorageOverview";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,7 @@ export default function Dashboard() {
       <PageHeader title="Dashboard" description={<>{list.length} account{list.length > 1 ? "s" : ""} connected · {bytes(used)} stored in total. Each account has its own separate limit.</>}
          />
       <StorageOverview accounts={list} trashCount={trash.data?.total} />
+      <Separator />
       <div className="grid gap-4 md:grid-cols-2">
         {list.map((a) => (
           <Card key={a.id} className="overflow-hidden">
@@ -62,7 +63,8 @@ export default function Dashboard() {
           </Link>)}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <Separator />
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardContent className="pt-5">
             <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Uploads</h2><Link to="/uploads" className="flex items-center gap-1 text-sm text-primary hover:underline">Open <ArrowRight className="h-3.5 w-3.5" /></Link></div>

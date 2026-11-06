@@ -34,7 +34,7 @@ export function StorageOverview({ accounts, trashCount }: { accounts: Account[];
   const freePct = capacity ? Math.round((free / capacity) * 100) : 0;
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardContent className="space-y-4 pt-5">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>

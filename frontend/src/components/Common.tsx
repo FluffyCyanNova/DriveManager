@@ -137,3 +137,6 @@ export function DoubleConfirm({ open, onOpenChange, title, children, confirmLabe
 }
 
 const fmtBytes = (n: number) => { const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; let v = n; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; } return `${v.toFixed(i ? 1 : 0)} ${u[i]}`; };
+
+/** Thin, light divider between page sections (instead of a plain gap). */
+export const Separator = ({ className }: { className?: string }) => <hr className={`my-3 border-0 border-t border-border/50 ${className ?? ""}`} />;
