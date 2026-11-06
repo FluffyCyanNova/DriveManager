@@ -91,3 +91,7 @@ body { @apply bg-background text-foreground font-sans antialiased; font-feature-
 
 /* trash portion of the storage bar */
 .hatch { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 3px, transparent 3px 6px); }
+
+/* Floating bars (e.g. the Files selection bar) slide up into view. */
+@keyframes dm-slide-up { from { opacity: 0; transform: translateY(0.5rem); } to { opacity: 1; transform: none; } }
+.dm-slide-up { animation: dm-slide-up .16s ease-out; }

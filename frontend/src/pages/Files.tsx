@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AccountChip, DoubleConfirm, type DoomedItem, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
@@ -225,6 +225,15 @@ function DriveBrowser() {
   const pages = Math.max(1, Math.ceil(total / 100));
   const canMkdir = loc !== "trash" && loc !== "shared_with_me" && (top ? true : !!accountId && loc === "my_drive");
   const selected = items.filter((i) => sel.has(i.id));
+  useEffect(() => {
+    if (!sel.size) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || document.querySelector('[role="dialog"], [role="menu"]')) return;
+      setSel(new Set()); anchor.current = null;
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sel.size]);
   const toggleRow = (id: string, checked: boolean) => {
     const n = new Set(sel);
     const from = anchor.current ? items.findIndex((i) => i.id === anchor.current) : -1;
@@ -320,17 +329,21 @@ function DriveBrowser() {
         </div>)}
       {q && <p className="mb-3 text-sm text-muted-foreground">Search results for “{q}”{loc === "trash" ? " in Trash" : ""}.</p>}
 
+      {/* Floating selection bar: bottom centre, above the upload panel, so the list never jumps. Esc clears. */}
       {selected.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm text-accent-foreground">
-          <b>{selected.length} selected</b>
+        <div role="toolbar" aria-label={`${selected.length} selected`}
+          style={{ bottom: "calc(var(--upload-panel-h, 0px) + 1rem)" }}
+          className="fixed inset-x-2 z-40 mx-auto flex w-fit max-w-[calc(100vw-1rem)] dm-slide-up flex-wrap items-center justify-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm shadow-2xl">
+          <b className="px-1">{selected.length} selected</b>
+          <span className="hidden h-5 w-px bg-border sm:block" aria-hidden />
           {loc !== "trash" && <Button size="sm" variant="outline" onClick={() => setAddTo(selected)}><Link2 className="h-3.5 w-3.5" />Add to virtual folder</Button>}
           {loc !== "trash" && <Button size="sm" variant="outline" className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={async () => { for (const i of selected) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); }}><Trash2 className="h-3.5 w-3.5" />Move to trash</Button>}
           {loc === "trash" && <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate({ items: selected.filter((i) => i.can.untrash), action: "restore" })}><RotateCcw className="h-3.5 w-3.5" />Restore</Button>}
           <Button size="sm" variant="destructive" disabled={bulk.isPending || !selected.some((i) => i.can.delete)} onClick={() => setBulkDeleting(selected.filter((i) => i.can.delete))}><Trash2 className="h-3.5 w-3.5" />Delete permanently…</Button>
-          <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
+          <Button size="icon" variant="ghost" aria-label="Clear selection (Esc)" title="Clear selection (Esc)" onClick={() => setSel(new Set())}><X className="h-4 w-4" /></Button>
         </div>)}
 
-      <Card className="overflow-hidden">
+      <Card className={cn("overflow-hidden", selected.length > 0 && "mb-20")}>
         {sharedRoot ? (
           drives.isLoading ? <Spinner /> : (drives.data ?? []).filter((d) => !accountId || d.account_id === accountId).length === 0 ? <EmptyState icon={<Users className="h-8 w-8" />} title="No shared drives">None of your connected accounts are members of a shared drive.</EmptyState> : (
             <ul className="divide-y">{drives.data!.filter((d) => !accountId || d.account_id === accountId).map((d) => (

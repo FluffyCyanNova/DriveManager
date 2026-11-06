@@ -16,6 +16,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 **Files**
 * Browse and search **My Drive, Shared with me, Shared drives and Trash** across all accounts in one list.
 * Filter by account and file type. Sort by name, account, date or size, either from the menu or by **clicking a column header** (click again to flip). Choose **Folders first, Files first or Mixed**; the choice is remembered.
+* **Selecting files** shows a floating bar at the bottom (Add to virtual folder, Move to trash, Delete permanently; in Trash, Restore). The list doesn't move, and the bar stays visible while you scroll. **Esc** or ✕ clears the selection.
 * **Shift + click** to select a range: tick one file, then Shift + click another file's checkbox (or the empty part of its row) to tick everything in between. Shift + unticking clears the range. Works on the current page.
 * **Right-click** any file or folder (or long-press on phones) for the same actions as its ⋮ menu. If several items are selected, the menu acts on all of them. **Shift + right-click** still gives the browser's own menu.
 * **Show all files**: a toggle that lists every file in every folder of the current tab as one flat list, with the folder each file is in shown under its name (click it to open the folder). Folders themselves are hidden there, and sorting and filters still apply, so "largest files anywhere" is one click. On by default; turning it off is remembered in your browser.
