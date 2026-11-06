@@ -1,5 +1,5 @@
 import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Sun } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch, useSearchShortcut } from "@/components/GlobalSearch";
 import { SidebarNav } from "@/components/SidebarNav";
 import { Toaster } from "@/components/Toaster";
@@ -28,6 +28,9 @@ export default function Layout() {
     else { setMobileSearch(true); setTimeout(() => mobileSearchRef.current?.focus(), 0); }
   }, []);
   useSearchShortcut(focusSearch);
+  const mobileOpen = mobileSearch || searching;
+  const navigate = useNavigate();
+  const closeMobileSearch = () => { setMobileSearch(false); if (searching) navigate("/files", { replace: true }); };
   const hideLabel = m.hide ? "Show emails" : "Hide emails";
   useEvents();
   const { dark, toggleDark } = useUI();
@@ -65,21 +68,25 @@ export default function Layout() {
       <aside className="shrink-0 border-b bg-card md:sticky md:top-0 md:h-screen md:w-56 md:border-b-0 md:border-r">
         <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
           <img src="/favicon.svg" alt="" className="h-7 w-7" />
-          <div className="flex min-w-0 flex-col leading-tight">
+          <div className={cn("flex min-w-0 flex-col leading-tight", mobileOpen && "hidden md:flex")}>
             <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
               className="w-fit text-[15px] font-semibold tracking-tight hover:text-primary hover:underline">DriveManager</a>
             <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
               className="w-fit text-xs text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
           </div>
-          <div className="ml-auto flex gap-1 md:hidden">
-            <button onClick={() => (mobileSearch || searching ? setMobileSearch(false) : focusSearch())} className={cn("rounded p-1.5 hover:bg-accent", (mobileSearch || searching) && "bg-accent")} aria-label="Search everything" aria-expanded={mobileSearch || searching}><Search className="h-4 w-4" /></button>
+          {/* Phones: the search replaces the title and buttons in the top bar instead of adding a full-width row. */}
+          {mobileOpen && <>
+            <GlobalSearch ref={mobileSearchRef} className="min-w-0 flex-1 md:hidden" onDone={() => setMobileSearch(false)} />
+            <button onClick={closeMobileSearch} className="shrink-0 rounded px-1.5 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-foreground md:hidden">Cancel</button>
+          </>}
+          <div className={cn("ml-auto flex gap-1 md:hidden", mobileOpen && "hidden")}>
+            <button onClick={focusSearch} className="rounded p-1.5 hover:bg-accent" aria-label="Search everything"><Search className="h-4 w-4" /></button>
             <button onClick={syncAll} disabled={busy || connected.length === 0} className="rounded p-1.5 hover:bg-accent disabled:opacity-60" aria-label={syncLabel} title={syncLabel}><RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} /></button>
             <button onClick={toggleHideEmails} className="rounded p-1.5 hover:bg-accent" aria-label={hideLabel} aria-pressed={m.hide} title={hideLabel}>{m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             <button onClick={toggleDark} className="rounded p-1.5 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
             <button onClick={logout} className="rounded p-1.5 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
-        {(mobileSearch || searching) && <GlobalSearch ref={mobileSearchRef} className="px-2 pb-2 md:hidden" onDone={() => setMobileSearch(false)} />}
         <SidebarNav />
         <div className="mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:block md:w-56">
           <GlobalSearch ref={desktopSearch} className="mb-2" />
