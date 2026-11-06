@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/input";
@@ -78,3 +78,62 @@ export function PromptDialog({ open, onOpenChange, title, label, initial = "", c
     </Dialog>
   );
 }
+
+export interface DoomedItem { name: string; size?: number | null; isFolder?: boolean }
+
+/**
+ * Two-step confirmation for permanent deletes. Step 1 explains what will happen ("confirmLabel"); step 2 lists every
+ * item that will be deleted and only enables the final button after a 3-second countdown. `items` may be a loader for
+ * lists that have to be fetched first (e.g. everything in the trash).
+ */
+export function DoubleConfirm({ open, onOpenChange, title, children, confirmLabel, finalLabel = "Permanently delete", items, onConfirm, busy }: {
+  open: boolean; onOpenChange: (o: boolean) => void; title: string; children: ReactNode; confirmLabel: string; finalLabel?: string;
+  items: DoomedItem[] | (() => Promise<DoomedItem[]>); onConfirm: () => void; busy?: boolean;
+}) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [list, setList] = useState<DoomedItem[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [left, setLeft] = useState(3);
+  useEffect(() => { if (!open) { setStep(1); setList(null); setLoadError(null); setLeft(3); } }, [open]);
+  useEffect(() => {
+    if (step !== 2 || list === null || left <= 0) return;
+    const t = setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [step, list, left]);
+  const next = async () => {
+    setStep(2); setLeft(3);
+    if (Array.isArray(items)) { setList(items); return; }
+    try { setList(await items()); } catch (e) { setLoadError(errText(e)); setList([]); }
+  };
+  const total = (list ?? []).reduce((a, i) => a + (i.size ?? 0), 0);
+  const folders = (list ?? []).filter((i) => i.isFolder).length;
+
+  if (step === 1) return <ConfirmDialog open={open} onOpenChange={onOpenChange} title={title} confirmLabel={confirmLabel} danger onConfirm={next}>{children}</ConfirmDialog>;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange} title="Are you sure?"
+      description={list === null ? "Getting the list of items…" : <>
+        {list.length === 0 && !loadError ? "There's nothing to delete." : <>
+          <b className="text-destructive">{list.length.toLocaleString()} item{list.length === 1 ? "" : "s"}</b>{total ? ` (${fmtBytes(total)})` : ""} will be permanently deleted from Google Drive.
+          {folders ? ` That includes everything you own inside ${folders} folder${folders === 1 ? "" : "s"}.` : ""} This can't be undone.</>}
+        {loadError && <span className="mt-1 block text-destructive">Couldn't load the full list: {loadError}</span>}
+      </>}>
+      <div className="space-y-4">
+        {list === null ? <Spinner /> : list.length > 0 && (
+          <ul className="max-h-60 divide-y overflow-y-auto rounded-md border text-sm" aria-label="Items that will be deleted">
+            {list.map((i, k) => (
+              <li key={`${i.name}-${k}`} className="flex items-center gap-2 px-3 py-1.5">
+                <span className="min-w-0 flex-1 truncate" title={i.name}>{i.isFolder ? "📁 " : ""}{i.name}</span>
+                {i.size != null && <span className="shrink-0 text-xs text-muted-foreground">{fmtBytes(i.size)}</span>}
+              </li>))}
+          </ul>)}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+          <Button variant="destructive" disabled={busy || list === null || list.length === 0 || left > 0} onClick={onConfirm}>
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}{left > 0 && list !== null && list.length > 0 ? `${finalLabel} (${left})` : finalLabel}</Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+const fmtBytes = (n: number) => { const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; let v = n; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; } return `${v.toFixed(i ? 1 : 0)} ${u[i]}`; };

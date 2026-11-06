@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AccountChip, ConfirmDialog, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
+import { AccountChip, DoubleConfirm, type DoomedItem, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
 import { download, ExportDialog, FileIcon, VirtualFolderPicker } from "@/components/FileBits";
 import { FolderPicker } from "@/components/FolderPicker";
 import { Button } from "@/components/ui/button";
@@ -358,17 +358,30 @@ function DriveBrowser() {
       {newFolder && <PromptDialog open onOpenChange={setNewFolder} title="New folder" label={`Folder name${top ? ` (inside ${top.name})` : ""}`} confirmLabel="Create" busy={mkdir.isPending} onSubmit={(n) => mkdir.mutate(n)} />}
       <Dialog open={!!moving} onOpenChange={(o) => !o && setMoving(null)} title={`Move “${moving?.name ?? ""}”`} description="Items can be moved within the same account.">
         {moving && <FolderPicker accountId={moving.account_id} label="Move here" onCancel={() => setMoving(null)} onPick={(f) => move.mutate({ it: moving, dest: f.id ?? "root" })} />}</Dialog>
-      <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete permanently?" confirmLabel="Delete forever" danger busy={purge.isPending} onConfirm={() => deleting && purge.mutate(deleting)}>
+      <DoubleConfirm open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete permanently?" confirmLabel="Delete forever" busy={purge.isPending}
+        items={deleting ? [{ name: deleting.name, size: deleting.size, isFolder: deleting.is_folder }] : []} onConfirm={() => deleting && purge.mutate(deleting)}>
         “{deleting?.name}” will be removed from Google Drive right away{deleting && !deleting.trashed ? ", without going to the trash first" : ""}.
-        {deleting?.is_folder ? " Everything inside this folder that you own is deleted with it." : ""} This can't be undone.</ConfirmDialog>
-      <ConfirmDialog open={!!bulkDeleting} onOpenChange={(o) => !o && setBulkDeleting(null)} title={`Delete ${bulkDeleting?.length ?? 0} item(s) permanently?`} confirmLabel="Delete forever" danger busy={bulk.isPending}
+        {deleting?.is_folder ? " Everything inside this folder that you own is deleted with it." : ""} This can't be undone.</DoubleConfirm>
+      <DoubleConfirm open={!!bulkDeleting} onOpenChange={(o) => !o && setBulkDeleting(null)} title={`Delete ${bulkDeleting?.length ?? 0} item(s) permanently?`} confirmLabel="Delete forever" busy={bulk.isPending}
+        items={(bulkDeleting ?? []).map((i) => ({ name: i.name, size: i.size, isFolder: i.is_folder }))}
         onConfirm={() => bulkDeleting && bulk.mutate({ items: bulkDeleting, action: "delete" })}>
         The selected items will be removed from Google Drive right away{loc !== "trash" ? ", without going to the trash first" : ""}.
-        {bulkDeleting?.some((i) => i.is_folder) ? " Everything you own inside the selected folders is deleted with them." : ""} This can't be undone.</ConfirmDialog>
-      <ConfirmDialog open={emptying} onOpenChange={setEmptying} title="Empty trash?" confirmLabel="Empty trash" danger busy={emptyTrash.isPending}
+        {bulkDeleting?.some((i) => i.is_folder) ? " Everything you own inside the selected folders is deleted with them." : ""} This can't be undone.</DoubleConfirm>
+      <DoubleConfirm open={emptying} onOpenChange={setEmptying} title="Empty trash?" confirmLabel="Empty trash" finalLabel="Empty trash permanently" busy={emptyTrash.isPending}
+        items={async () => {
+          const out: DoomedItem[] = [];
+          for (const a of emptyTargets) {
+            for (let page = 1; ; page++) {
+              const r = await api.get<FilePage>(`/api/files?${new URLSearchParams({ trashed: "true", account_id: a.id, page: String(page), page_size: "500" })}`);
+              r.items.filter((i) => i.owned_by_me && !i.drive_id).forEach((i) => out.push({ name: i.name, size: i.size, isFolder: i.is_folder }));
+              if (page * 500 >= r.total) break;
+            }
+          }
+          return out;
+        }}
         onConfirm={() => emptyTrash.mutate(emptyTargets.map((a) => a.id))}>
         Everything in the Google Drive trash of {emptyTargets.length === 1 ? m.email(emptyTargets[0].email) : `all ${emptyTargets.length} connected accounts`} will be deleted permanently. This can't be undone.
-        Shared-drive trash and files owned by other people aren't affected.</ConfirmDialog>
+        Shared-drive trash and files owned by other people aren't affected.</DoubleConfirm>
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       {openFileDialog}
       {ctx.node}
