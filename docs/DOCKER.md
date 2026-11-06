@@ -15,7 +15,7 @@ The backend and worker are never reachable from your network directly. Only ngin
 | `drive_manager_db` | SQLite database (accounts, encrypted tokens, file index, history) |
 | `drive_manager_secrets` | optional key file location (`/secrets/encryption.key`) |
 | `drive_manager_staging` | uploaded files waiting to go to Google, plus temp files |
-| `drive_manager_logs` | rotating log files (secrets are redacted) |
+| `drive_manager_logs` | rotating `backend.log` / `worker.log`, 5 MB x 5 each (secrets are redacted; emails are not) |
 | `drive_manager_backups` | backups made by the backup command |
 
 > **Never run `docker compose down -v`.** The `-v` flag deletes these volumes, including the database. Use `scripts\stop.ps1` (which runs `docker compose stop`) instead. `docker compose down` without `-v` is safe.
@@ -26,7 +26,8 @@ The backend and worker are never reachable from your network directly. Only ngin
 | First-time setup | `scripts\setup.ps1` |
 | Start | `scripts\start.ps1` |
 | Stop (data kept) | `scripts\stop.ps1` |
-| Live logs | `scripts\logs.ps1` or `scripts\logs.ps1 worker` |
+| Live logs | `scripts\logs.ps1` or `scripts\logs.ps1 worker` (Ctrl+C to stop) |
+| Copy logs to read or share | `scripts\get-logs.ps1`: log files plus recent container output (incl. the frontend) into `.\logs\` (git-ignored). `-Tail 0` for all console output. |
 | Update to the latest version | `git switch main`, `git pull`, then `scripts\update.ps1` (backs up first, rebuilds, migrates). The script builds from the files in this folder, so pull first. |
 | Back up | `scripts\backup.ps1` |
 | Restore | `scripts\restore.ps1 -File backups\drivemanager-backup-XXXX.zip` |
