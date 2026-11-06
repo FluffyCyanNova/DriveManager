@@ -245,7 +245,7 @@ function DriveBrowser() {
     { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, disabled: !list.some((i) => i.can.delete), onSelect: () => setBulkDeleting(list.filter((i) => i.can.delete)) },
   ] : [
     { label: "Add to virtual folder", icon: <Link2 className="h-4 w-4" />, onSelect: () => setAddTo(list) },
-    { label: `Move ${list.length} items to trash`, icon: <Trash2 className="h-4 w-4" />, onSelect: async () => { for (const i of list) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); } },
+    { label: `Move ${list.length} items to trash`, icon: <Trash2 className="h-4 w-4" />, danger: true, onSelect: async () => { for (const i of list) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); } },
     { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, disabled: !list.some((i) => i.can.delete), onSelect: () => setBulkDeleting(list.filter((i) => i.can.delete)) },
   ];
   const rowMenu = (it: DriveItem) => (sel.has(it.id) && sel.size > 1
@@ -261,7 +261,7 @@ function DriveBrowser() {
     { label: "Move to…", icon: <FolderInput className="h-4 w-4" />, hidden: it.trashed || !it.can.move, onSelect: () => setMoving(it) },
     { label: "Move to another account…", icon: <ArrowLeftRight className="h-4 w-4" />, hidden: it.trashed || it.is_folder || !!it.shortcut_target_id || !otherAccounts, onSelect: () => setMovingAcross(it) },
     { label: "Add to virtual folder", icon: <Link2 className="h-4 w-4" />, hidden: it.trashed, onSelect: () => setAddTo([it]) },
-    { label: "Move to trash", icon: <Trash2 className="h-4 w-4" />, hidden: it.trashed || !it.can.trash, onSelect: () => trash.mutate(it) },
+    { label: "Move to trash", icon: <Trash2 className="h-4 w-4" />, danger: true, hidden: it.trashed || !it.can.trash, onSelect: () => trash.mutate(it) },
     { label: "Restore", icon: <RotateCcw className="h-4 w-4" />, hidden: !it.trashed || !it.can.untrash, onSelect: () => restore.mutate(it) },
     { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, hidden: !it.can.delete, onSelect: () => setDeleting(it) },
   ];
@@ -309,7 +309,7 @@ function DriveBrowser() {
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm text-accent-foreground">
           <b>{selected.length} selected</b>
           {loc !== "trash" && <Button size="sm" variant="outline" onClick={() => setAddTo(selected)}><Link2 className="h-3.5 w-3.5" />Add to virtual folder</Button>}
-          {loc !== "trash" && <Button size="sm" variant="outline" onClick={async () => { for (const i of selected) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); }}><Trash2 className="h-3.5 w-3.5" />Move to trash</Button>}
+          {loc !== "trash" && <Button size="sm" variant="outline" className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={async () => { for (const i of selected) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); }}><Trash2 className="h-3.5 w-3.5" />Move to trash</Button>}
           {loc === "trash" && <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate({ items: selected.filter((i) => i.can.untrash), action: "restore" })}><RotateCcw className="h-3.5 w-3.5" />Restore</Button>}
           <Button size="sm" variant="destructive" disabled={bulk.isPending || !selected.some((i) => i.can.delete)} onClick={() => setBulkDeleting(selected.filter((i) => i.can.delete))}><Trash2 className="h-3.5 w-3.5" />Delete permanently…</Button>
           <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
