@@ -17,15 +17,15 @@ export const GlobalSearch = forwardRef<HTMLInputElement, { className?: string; o
   };
   return (
     <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
       <input ref={ref} type="search" value={value} aria-label="Search all files and folders" placeholder="Search…"
         onChange={(e) => set(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); set(""); (e.target as HTMLInputElement).blur(); onDone?.(); } }}
-        className="h-10 w-full rounded-md border bg-card pl-9 pr-14 text-sm placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden" />
+        className="h-9 w-full rounded-md border bg-card pl-9 pr-14 text-sm placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden" />
       {value ? (
         <button type="button" aria-label="Clear search" onClick={() => { set(""); onDone?.(); }}
-          className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
-      ) : <kbd className="pointer-events-none absolute right-2.5 top-2.5 hidden rounded border px-1.5 text-[10px] text-muted-foreground md:block">Ctrl K</kbd>}
+          className="absolute right-2 top-1.5 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+      ) : <kbd className="pointer-events-none absolute right-2.5 top-2 hidden rounded border px-1.5 text-[10px] text-muted-foreground md:block">Ctrl K</kbd>}
     </div>
   );
 });
