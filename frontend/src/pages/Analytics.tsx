@@ -10,6 +10,7 @@ import { api } from "@/services/api";
 import type { Analytics as AnalyticsData, HistoryPoint } from "@/types";
 import { accountColor } from "@/utils/accountColor";
 import { bytes } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 const GB = 1024 ** 3;
 const tip = {
@@ -25,6 +26,7 @@ const axis = { stroke: "hsl(var(--muted-foreground))", fontSize: 12, tickLine: f
 const TYPE_LABEL: Record<string, string> = { image: "Images", video: "Video", audio: "Audio", pdf: "PDF", document: "Documents", spreadsheet: "Spreadsheets", presentation: "Presentations", archive: "Archives", other: "Other" };
 
 export default function Analytics() {
+  const m = useMask();
   const [days, setDays] = useState(30);
   const a = useQuery({ queryKey: ["analytics"], queryFn: () => api.get<AnalyticsData>("/api/analytics/summary") });
   const h = useQuery({ queryKey: ["analytics", "history", days], queryFn: () => api.get<HistoryPoint[]>(`/api/storage/history?days=${days}`) });
@@ -40,7 +42,7 @@ export default function Analytics() {
   const hist = Array.from(rows.values());
   const fmtT = (t: string) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
-  const perAcc = data.per_account.map((p) => ({ name: p.email.split("@")[0], used: +((p.quota?.usage ?? 0) / GB).toFixed(2), limit: p.quota?.limit ? +(p.quota.limit / GB).toFixed(2) : null, id: p.account_id }));
+  const perAcc = data.per_account.map((p) => ({ name: m.hide ? m.email(p.email) : p.email.split("@")[0], used: +((p.quota?.usage ?? 0) / GB).toFixed(2), limit: p.quota?.limit ? +(p.quota.limit / GB).toFixed(2) : null, id: p.account_id }));
   const types = data.by_type.map((t) => ({ name: TYPE_LABEL[t.type] ?? t.type, GB: +(t.bytes / GB).toFixed(3), files: t.files }));
   const uploads = data.uploads_per_day.map((u) => ({ day: u.day.slice(5), GB: +(u.bytes / GB).toFixed(3), files: u.count }));
 
@@ -53,7 +55,7 @@ export default function Analytics() {
             <Select aria-label="Range" className="w-32" value={days} onChange={(e) => setDays(+e.target.value)}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option></Select></div>
           {hist.length < 2 ? <p className="py-10 text-center text-sm text-muted-foreground">History builds up as quotas are refreshed. Check back after a few readings.</p> : (
             <div className="h-64"><ResponsiveContainer><LineChart data={hist}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /><XAxis dataKey="t" tickFormatter={fmtT} {...axis} /><YAxis {...axis} width={44} /><Tooltip {...lineTip} labelFormatter={(t) => new Date(String(t)).toLocaleString()} /><Legend />
-              {emails.map((e) => <Line key={e} type="monotone" dataKey={e} stroke={accountColor(idByEmail[e], 45)} dot={false} strokeWidth={2} connectNulls />)}</LineChart></ResponsiveContainer></div>)}
+              {emails.map((e) => <Line key={e} type="monotone" dataKey={e} name={m.email(e)} stroke={accountColor(idByEmail[e], 45)} dot={false} strokeWidth={2} connectNulls />)}</LineChart></ResponsiveContainer></div>)}
         </CardContent></Card>
 
         <Card><CardContent className="pt-5"><h2 className="mb-3 font-semibold">Accounts compared (GB)</h2>

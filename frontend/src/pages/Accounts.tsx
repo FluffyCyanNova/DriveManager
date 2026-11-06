@@ -13,8 +13,10 @@ import { toast } from "@/stores/ui";
 import type { Account } from "@/types";
 import { accountColor } from "@/utils/accountColor";
 import { ago, when } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 export default function Accounts() {
+  const m = useMask();
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const accounts = useAccounts();
@@ -57,14 +59,14 @@ export default function Accounts() {
             <div className="h-1" style={{ background: accountColor(a.id) }} />
             <CardContent className="space-y-4 pt-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0"><p className="truncate text-base font-semibold">{a.email}</p><p className="text-sm text-muted-foreground">{a.display_name}</p></div>
+                <div className="min-w-0"><p className="truncate text-base font-semibold">{m.email(a.email)}</p><p className="text-sm text-muted-foreground">{m.name(a.display_name)}</p></div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {a.status === "NEEDS_REAUTH" ? <Badge tone="danger">Needs reconnecting</Badge> : <Badge tone="success">Connected</Badge>}
                   {a.syncing && <Badge tone="info">Syncing</Badge>}
                   {!a.initial_scan_complete && a.status === "ACTIVE" && <Badge tone="warning">First scan in progress</Badge>}
                 </div>
               </div>
-              {a.status === "NEEDS_REAUTH" && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{a.status_detail ?? "Google access expired."} Your files in Drive are safe; reconnecting restores syncing and uploads.</p>}
+              {a.status === "NEEDS_REAUTH" && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{m.text(a.status_detail) ?? "Google access expired."} Your files in Drive are safe; reconnecting restores syncing and uploads.</p>}
               <StorageBar accountId={a.id} quota={a.quota} />
               <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
                 <span>{a.files_indexed.toLocaleString()} files indexed · last sync {ago(a.last_sync_at)}</span>
@@ -80,7 +82,7 @@ export default function Accounts() {
             </CardContent>
           </Card>))}
         </div>)}
-      <ConfirmDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)} title={`Remove ${removing?.email}?`} confirmLabel="Remove account" danger busy={remove.isPending} onConfirm={() => removing && remove.mutate(removing.id)}>
+      <ConfirmDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)} title={`Remove ${m.email(removing?.email)}?`} confirmLabel="Remove account" danger busy={remove.isPending} onConfirm={() => removing && remove.mutate(removing.id)}>
         This only disconnects the account from DriveManager and deletes its local index, quota history and virtual-folder links. Nothing is deleted from Google Drive. You can reconnect it later.
       </ConfirmDialog>
     </>

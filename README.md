@@ -1,16 +1,42 @@
 # DriveManager
 
-A private, self-hosted dashboard for managing several Google Drive accounts from one place. It runs on your own Windows PC in Docker and talks to Google only through the official Drive API.
+A private, self-hosted dashboard for managing several Google Drive accounts in one place. It runs on your own Windows PC in Docker and talks to Google only through the official Drive API.
 
-**What it does**
+![Dashboard: combined storage bar and one card per account, with emails hidden](docs/screenshots/dashboard.png)
 
-* Connect multiple Google accounts (My Drive, Shared with me, shared drives) and see **each account's own storage quota** side by side, with history charts.
-* **Browse and search everything** in one list: rename, move, create folders, download (Google Docs/Sheets/Slides export to Office/PDF), trash, restore, delete permanently (with confirmation).
-* **Upload** with live progress, to an account you choose or **automatically** (routing rules by file type/name, then your account priority, never splitting a file, never silently switching a chosen account). Uploads **resume** after network drops or restarts and **never duplicate**.
-* **Virtual folders**: organise links to files across accounts without moving anything in Drive.
-* Activity history, analytics, encrypted credentials, backup and restore scripts.
+<sub>Screenshots use sample accounts with **Hide emails** switched on.</sub>
 
-DriveManager shows accounts as separate quotas. It does not merge them into one big drive.
+## Features
+
+**Storage at a glance**
+* Every connected account's **own quota**, side by side: used, free, and how much is in the trash.
+* One combined bar on the dashboard, plus the **largest single free space** (the biggest file you can actually upload, since a file is never split across accounts).
+* Storage history and analytics: usage over time, what's taking space by file type, largest files, uploads per day. The charts follow the light/dark theme.
+
+**Files**
+* Browse and search **My Drive, Shared with me, Shared drives and Trash** across all accounts in one list.
+* Filter by account and file type. Sort by name, account, date or size, either from the menu or by **clicking a column header** (click again to flip). Choose **Folders first, Files first or Mixed**; the choice is remembered.
+* Resizable columns: drag the edge, or double-click to fit.
+* Rename, move, create folders, download (Google Docs/Sheets/Slides export to Office or PDF).
+* **Move to trash**, restore, **Delete permanently** (from anywhere, with confirmation), and **Empty trash** per account or for all of them.
+* Quick links in the sidebar: **Files → Trash** and **Files → Virtual folders**.
+
+![Files: one list across accounts with filters, sortable columns and per-account colours](docs/screenshots/files.png)
+
+**Uploads**
+* Live progress, to an account you choose or **automatically**: routing rules by file type or name, then your account priority. A file is never split, and an account you chose is never silently swapped for another.
+* Uploads **resume** after network drops or restarts and **never duplicate**. Failed uploads can be retried, also on another account.
+* Optionally **add each upload to a virtual folder** as soon as it finishes.
+
+**Virtual folders**
+* Your own folder tree of links to files across accounts. Nothing moves in Google Drive.
+
+**Privacy and security**
+* **Hide emails**: a sidebar switch that replaces every email address in the app with a stable alias (e.g. `user-k3f9x2`). Handy for screenshots and screen sharing. Display only: nothing changes on the server.
+* Single local user with a hashed password, CSRF and origin checks, and Google refresh tokens encrypted at rest. Tokens are redacted from logs.
+* Activity history, plus backup and restore scripts.
+
+DriveManager keeps accounts as separate quotas. It does not merge them into one big drive.
 
 ## Quick start (Windows 10/11)
 
@@ -21,44 +47,61 @@ DriveManager shows accounts as separate quotas. It does not merge them into one 
    scripts\start.ps1     # builds, starts and opens http://localhost:8000
    ```
    (If PowerShell refuses to run scripts: `Set-ExecutionPolicy -Scope Process Bypass`, then try again.)
-3. Create your Google credentials once by following **[docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md)**, put them in `.env` (or re-run `scripts\setup.ps1`), then `scripts\start.ps1` again.
-4. Sign in, open **Accounts**, click **Connect account**.
+3. Create your Google credentials once by following **[docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md)**. Put them in `.env` (or re-run `scripts\setup.ps1`), then run `scripts\start.ps1` again.
+4. Sign in, open **Accounts**, and click **Connect account**.
 
-The first start builds images and can take several minutes. Back up regularly with `scripts\backup.ps1`.
+The first start builds the images and can take several minutes. Back up regularly with `scripts\backup.ps1`.
+
+## Updating
+
+`scripts\update.ps1` rebuilds from the files in this folder, so pull the latest code first:
+
+```powershell
+git switch main
+git pull
+scripts\update.ps1    # backs up, rebuilds the images, restarts; database migrations run automatically
+```
+
+Then reload the app in your browser. Your data lives in Docker volumes and is not touched by an update.
 
 ## Documentation
 | | |
 |---|---|
 | [docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md) | Step-by-step Google Cloud setup (read the 7-day token note) |
-| [docs/DOCKER.md](docs/DOCKER.md) | Operating it: volumes, backup/restore, HTTPS, troubleshooting |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works, safety guarantees, security model, deviations from the spec |
-| [docs/DATABASE.md](docs/DATABASE.md) | Tables |
-| [docs/API.md](docs/API.md) | HTTP API |
+| [docs/DOCKER.md](docs/DOCKER.md) | Operating it: volumes, updating, backup/restore, HTTPS, troubleshooting |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: uploads, deleting, virtual folders, Hide emails, security model |
+| [docs/DATABASE.md](docs/DATABASE.md) | Tables and migrations |
+| [docs/API.md](docs/API.md) | HTTP API, including query parameters for file listing and uploads |
 
 ## Project layout
 ```
 docker-compose.yml  .env.example
+.github/workflows/ CI: backend tests + frontend build on every pull request and push to main
 docker/        Dockerfiles + nginx configs (backend, worker, frontend)
 backend/       FastAPI app (app/), Alembic migrations, tests
   app/api  app/core  app/database  app/integrations/google_drive  app/services  app/workers  app/websocket
 frontend/      React + TypeScript + Vite + Tailwind
 scripts/       setup / start / stop / logs / backup / restore / update / make-cert (PowerShell)
-docs/
+docs/          Documentation and screenshots
 ```
 
 ## Development
 ```powershell
-# backend tests (Python 3.11+)
-cd backend; pip install -e ".[dev]"; pytest
-# frontend with hot reload (proxies to a backend on :8000)
-cd frontend; npm ci; npm run dev
+# backend tests (Python 3.11+; CI uses 3.12). Dependencies are read from backend/pyproject.toml, like CI and the Dockerfiles do.
+cd backend
+python -c "import tomllib; p = tomllib.load(open('pyproject.toml', 'rb'))['project']; print('\n'.join(p['dependencies'] + p['optional-dependencies']['dev']))" > requirements-dev.txt
+pip install -r requirements-dev.txt; pytest
+
+# frontend type-check and production build (Node 22)
+cd frontend; npm ci; npm run build
 ```
-For local backend runs set the variables from `.env.example` in your shell (at least `APP_SECRET_KEY`, `APP_ENCRYPTION_KEY`, `APP_PASSWORD_HASH`, `DATABASE_URL`, `STAGING_DIR`, `LOG_DIR`), run `alembic upgrade head`, then `uvicorn app.main:app`.
 
-## Honest status of this build
-Verified here: the backend test suite (43 tests: auth/CSRF/origin, encryption and log redaction, allocation rules, file index queries, virtual folders, the upload runner against a simulated Google, sync incl. cursor recovery), a live uvicorn + migrations + login + backup/restore run, the worker boot/heartbeat/shutdown, TypeScript type-check and a production frontend build.
+For a local backend, set the variables from `.env.example` in your shell (at least `APP_SECRET_KEY`, `APP_ENCRYPTION_KEY`, `APP_PASSWORD_HASH`, `DATABASE_URL`, `STAGING_DIR`, `LOG_DIR`), run `alembic upgrade head`, then `uvicorn app.main:app`. `npm run dev` proxies to a backend on **:8000**. If your Docker instance is already using that port, run the dev backend on another port and add the dev origin (e.g. `http://localhost:5173`) to `ALLOWED_ORIGINS`.
 
-**Not** verifiable in the environment it was written in, so please treat first run as a shakedown: the Docker image builds and compose wiring, the nginx configs (`nginx -t`), the PowerShell scripts on Windows, the UI in a real browser, and **real Google API calls** (everything Google-facing was tested against fakes). If something misbehaves, `scripts\logs.ps1` is the first place to look.
+## Testing and CI
+GitHub Actions runs on every pull request and every push to `main`. It runs the backend test suite (50 tests: auth/CSRF/origin, encryption and log redaction, allocation rules, file index queries and sorting, deleting and emptying trash, virtual folders including uploads into them, the upload runner against a simulated Google, sync including cursor recovery), plus a TypeScript type-check and a production frontend build.
+
+Everything Google-facing is tested against fakes, so real Google API behaviour is only exercised when you run it. If something misbehaves, `scripts\logs.ps1` is the first place to look.
 
 ## Known limitations
-No pause button for uploads (cancel/retry/auto-resume exist); no cross-account move/copy; single user; Google-native exports are limited to ~10 MB by Google; the app must be opened at the registered redirect address (`http://localhost:8000`) to connect accounts.
+No pause button for uploads (cancel, retry and auto-resume exist). No cross-account move or copy. Single user. Google-native exports are limited to ~10 MB by Google. The app must be opened at the registered redirect address (`http://localhost:8000`) to connect accounts.

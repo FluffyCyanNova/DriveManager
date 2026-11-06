@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, BarChart3, FolderTree, LayoutDashboard, Link2, LogOut, Moon, Settings, Sun, Trash2, UploadCloud, Users } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, Eye, EyeOff, FolderTree, LayoutDashboard, Link2, LogOut, Moon, Settings, Sun, Trash2, UploadCloud, Users } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/Toaster";
 import { useAccounts, useHealth } from "@/hooks/queries";
@@ -7,6 +7,7 @@ import { api } from "@/services/api";
 import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { cn } from "@/utils/cn";
+import { useMask, usePrivacy } from "@/utils/privacy";
 
 // Files has sub-entries that open the Files page on a specific view (?view=…); `view` decides which one is highlighted.
 const NAV: { to: string; label: string; icon: typeof FolderTree; end?: boolean; view?: string | null; sub?: boolean }[] = [
@@ -22,6 +23,9 @@ const NAV: { to: string; label: string; icon: typeof FolderTree; end?: boolean; 
 ];
 
 export default function Layout() {
+  const m = useMask();
+  const toggleHideEmails = usePrivacy((s) => s.toggleHideEmails);
+  const hideLabel = m.hide ? "Show emails" : "Hide emails";
   useEvents();
   const { dark, toggleDark } = useUI();
   const auth = useAuth();
@@ -41,6 +45,7 @@ export default function Layout() {
           <img src="/favicon.svg" alt="" className="h-7 w-7" />
           <span className="text-[15px] font-semibold tracking-tight">DriveManager</span>
           <div className="ml-auto flex gap-1 md:hidden">
+            <button onClick={toggleHideEmails} className="rounded p-1.5 hover:bg-accent" aria-label={hideLabel} aria-pressed={m.hide} title={hideLabel}>{m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             <button onClick={toggleDark} className="rounded p-1.5 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
             <button onClick={logout} className="rounded p-1.5 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
           </div>
@@ -58,6 +63,15 @@ export default function Layout() {
           ))}
         </nav>
         <div className="mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:block md:w-56">
+          <button onClick={toggleHideEmails} role="switch" aria-checked={m.hide}
+            title="Replaces every email address in the app with a stable alias (e.g. user-k3f9x2). Display only, for screenshots or screen sharing."
+            className={cn("mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm hover:bg-accent", m.hide ? "border-primary/50 text-foreground" : "text-muted-foreground")}>
+            {m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <span className="flex-1 text-left">Hide emails</span>
+            <span className={cn("relative h-4 w-7 rounded-full transition-colors", m.hide ? "bg-primary" : "bg-muted-foreground/40")}>
+              <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-background transition-all", m.hide ? "left-3.5" : "left-0.5")} />
+            </span>
+          </button>
           <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
             <span className="truncate text-muted-foreground">{auth.username}</span>
             <div className="flex gap-1">
@@ -69,7 +83,7 @@ export default function Layout() {
       </aside>
       <main className="min-w-0 flex-1">
         {needAuth.length > 0 && (
-          <Banner tone="danger" to="/accounts">{needAuth.map((a) => a.email).join(", ")} {needAuth.length > 1 ? "need" : "needs"} to be reconnected to Google. Syncing and uploads for {needAuth.length > 1 ? "them are" : "it is"} paused.</Banner>
+          <Banner tone="danger" to="/accounts">{needAuth.map((a) => m.email(a.email)).join(", ")} {needAuth.length > 1 ? "need" : "needs"} to be reconnected to Google. Syncing and uploads for {needAuth.length > 1 ? "them are" : "it is"} paused.</Banner>
         )}
         {health.data && !health.data.worker.alive && health.data.worker.enabled && <Banner tone="warn">The background worker isn't responding. Uploads and sync are paused until it is back (run <code>docker compose logs worker</code>).</Banner>}
         {health.data && !health.data.encryption_key_ok && <Banner tone="danger">The encryption key doesn't match this database, so stored Google credentials can't be read. Restore the original APP_ENCRYPTION_KEY from your backup.</Banner>}

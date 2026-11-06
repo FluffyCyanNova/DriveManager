@@ -61,6 +61,10 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | POST | `/api/files/{account_id}/{file_id}/restore` |
 | POST | `/api/files/{account_id}/{file_id}/trash` |
 
+`GET /api/files` query parameters: `account_id`, `location` (`my_drive` | `shared_with_me` | `shared_drive`), `parent_id`, `q` (name search), `type` (`folder`, `document`, `spreadsheet`, `presentation`, `pdf`, `image`, `video`, `audio`, `archive`, `other`), `modified_after`, `modified_before`, `min_size`, `max_size`, `trashed`, `folders_only`, `sort` (`name` | `modified` | `size` | `type` | `account`), `direction` (`asc` | `desc`), `folders` (`first` | `last` | `mixed`, default `first`: where folders go relative to files), `page`, `page_size` (max 500).
+
+`DELETE /api/files/{account_id}/{file_id}` moves the item to the trash. `?permanent=true&confirm=true` deletes it permanently (it doesn't need to be in the trash first).
+
 ### uploads
 
 | Method | Path |
@@ -71,6 +75,8 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | GET | `/api/uploads/{job_id}` |
 | POST | `/api/uploads/{job_id}/cancel` |
 | POST | `/api/uploads/{job_id}/retry` |
+
+`POST /api/uploads` is `multipart/form-data`: `file`, `mode` (`MANUAL` | `AUTO`), `account_id` (required for MANUAL), optional `folder_id` / `folder_name` (Drive destination), and optional `virtual_folder_id` (adds the finished file to that virtual folder; 404 `FOLDER_NOT_FOUND` if it doesn't exist).
 
 ### virtual-folders
 

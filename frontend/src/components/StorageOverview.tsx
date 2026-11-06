@@ -4,12 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Account } from "@/types";
 import { accountColor } from "@/utils/accountColor";
 import { bytes } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 /**
  * All accounts in one bar: used space (grey) followed by each account's remaining free space in its own colour.
  * Accounts stay separate quotas (a file is never split), so the largest single free space is shown too.
  */
 export function StorageOverview({ accounts, trashCount }: { accounts: Account[]; trashCount?: number }) {
+  const m = useMask();
   const rows = accounts
     .filter((a) => a.quota && a.quota.limit)
     .map((a) => {
@@ -43,7 +45,7 @@ export function StorageOverview({ accounts, trashCount }: { accounts: Account[];
           </div>
           <div className="text-right text-sm text-muted-foreground">
             <p>Largest single free space: <span className="font-medium text-foreground">{bytes(best.free)}</span></p>
-            <p className="truncate" title={best.email}>on {best.email}</p>
+            <p className="truncate" title={m.email(best.email)}>on {m.email(best.email)}</p>
           </div>
         </div>
 
@@ -51,7 +53,7 @@ export function StorageOverview({ accounts, trashCount }: { accounts: Account[];
           className="flex h-6 w-full gap-px overflow-hidden rounded-md bg-secondary">
           <div title={`Used: ${bytes(used)}`} style={{ width: pct(used), background: "hsl(var(--muted-foreground) / 0.45)" }} />
           {rows.map((r) => r.free > 0 && (
-            <div key={r.id} title={`${r.email}: ${bytes(r.free)} free`} style={{ width: pct(r.free), background: accountColor(r.id), opacity: r.reauth ? 0.4 : 1 }} />
+            <div key={r.id} title={`${m.email(r.email)}: ${bytes(r.free)} free`} style={{ width: pct(r.free), background: accountColor(r.id), opacity: r.reauth ? 0.4 : 1 }} />
           ))}
         </div>
 
@@ -61,7 +63,7 @@ export function StorageOverview({ accounts, trashCount }: { accounts: Account[];
             return (
               <li key={r.id} className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: accountColor(r.id) }} />
-                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={r.email}>{r.email}</span>
+                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={m.email(r.email)}>{m.email(r.email)}</span>
                 <span className={share < 0.1 ? "font-medium text-destructive" : share < 0.25 ? "font-medium text-warning" : "font-medium"}>{bytes(r.free)}</span>
               </li>
             );

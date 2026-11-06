@@ -14,8 +14,10 @@ import type { ActivityItem, FilePage, UploadJob } from "@/types";
 import { accountColor } from "@/utils/accountColor";
 import { ago, bytes } from "@/utils/format";
 import { describe } from "./Activity";
+import { useMask } from "@/utils/privacy";
 
 export default function Dashboard() {
+  const m = useMask();
   const accounts = useAccounts();
   const uploads = useQuery({ queryKey: ["uploads", "active"], queryFn: () => api.get<UploadJob[]>("/api/uploads?state=QUEUED,VALIDATING,ALLOCATING,UPLOADING,FINALIZING,FAILED&limit=20"), refetchInterval: 10_000 });
   const activity = useQuery({ queryKey: ["activity", "recent"], queryFn: () => api.get<{ items: ActivityItem[] }>("/api/activity?limit=8") });
@@ -43,7 +45,7 @@ export default function Dashboard() {
             <div className="h-1" style={{ background: accountColor(a.id) }} />
             <CardContent className="space-y-3 pt-4">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0"><p className="truncate font-medium">{a.email}</p><p className="text-xs text-muted-foreground">{a.files_indexed.toLocaleString()} files · synced {ago(a.last_sync_at)}</p></div>
+                <div className="min-w-0"><p className="truncate font-medium">{m.email(a.email)}</p><p className="text-xs text-muted-foreground">{a.files_indexed.toLocaleString()} files · synced {ago(a.last_sync_at)}</p></div>
                 {a.status === "NEEDS_REAUTH" ? <Badge tone="danger"><AlertTriangle className="h-3 w-3" />Reconnect</Badge> : a.syncing ? <Badge tone="info">Syncing</Badge> : <Badge tone="success">Connected</Badge>}
               </div>
               <StorageBar accountId={a.id} quota={a.quota} tall />
@@ -62,7 +64,7 @@ export default function Dashboard() {
                 {[...active, ...failed].slice(0, 5).map((j) => (
                   <li key={j.id} className="text-sm">
                     <div className="flex justify-between gap-2"><span className="truncate">{j.filename}</span>{j.state === "FAILED" ? <Badge tone="danger">Failed</Badge> : <span className="text-muted-foreground">{Math.round(j.progress)}%</span>}</div>
-                    {j.state === "FAILED" ? <p className="text-xs text-destructive">{j.error_message}</p> : <Progress className="mt-1.5" value={j.progress} />}
+                    {j.state === "FAILED" ? <p className="text-xs text-destructive">{m.text(j.error_message)}</p> : <Progress className="mt-1.5" value={j.progress} />}
                   </li>))}
               </ul>)}
           </CardContent>
@@ -72,7 +74,7 @@ export default function Dashboard() {
             <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Recent activity</h2><Link to="/activity" className="flex items-center gap-1 text-sm text-primary hover:underline">All <ArrowRight className="h-3.5 w-3.5" /></Link></div>
             {(activity.data?.items ?? []).length === 0 ? <p className="py-4 text-sm text-muted-foreground">No activity yet.</p> : (
               <ul className="space-y-2.5">{activity.data!.items.map((e) => (
-                <li key={e.id} className="text-sm"><div className="flex justify-between gap-2"><span className="truncate">{describe(e)}</span><span className="shrink-0 text-xs text-muted-foreground">{ago(e.created_at)}</span></div>
+                <li key={e.id} className="text-sm"><div className="flex justify-between gap-2"><span className="truncate">{m.text(describe(e))}</span><span className="shrink-0 text-xs text-muted-foreground">{ago(e.created_at)}</span></div>
                   {e.account_id && <AccountChip id={e.account_id} email={e.account_email} />}</li>))}</ul>)}
           </CardContent>
         </Card>

@@ -11,7 +11,7 @@ SQLite in WAL mode at `/data/drive_manager.db` (volume `drive_manager_db`). Sche
 | `quota_snapshots` | Per-account usage/limit history (unchanged readings within an hour are not stored again) |
 | `sync_cursors` | Persisted `changes` page token per account (scope `ACCOUNT`, or `DRIVE`) |
 | `sync_jobs` | Queue/history of sync runs |
-| `upload_jobs` | Upload queue and history: state machine, staged path, encrypted resumable URL, error code/message, allocation reason |
+| `upload_jobs` | Upload queue and history: state machine, staged path, encrypted resumable URL, error code/message, allocation reason, optional target virtual folder |
 | `file_events` | Activity history; keeps `account_email` so history survives account removal |
 | `realtime_events` | Worker/backend to browser event bus (pruned after 24 h) |
 | `virtual_folders`, `virtual_folder_items` | Your own folder tree and references to Drive items |
@@ -19,3 +19,6 @@ SQLite in WAL mode at `/data/drive_manager.db` (volume `drive_manager_db`). Sche
 | `local_sessions` | Browser sessions (SHA-256 of token, CSRF token, expiry) |
 
 Foreign keys are enforced (`PRAGMA foreign_keys=ON`). Removing an account cascades to its index, quota history, cursors, jobs' account link (set null) and virtual-folder references; activity history is kept.
+
+Migrations live in `backend/migrations/versions` and run automatically when the backend starts:
+`0001` initial schema, `0002` adds `upload_jobs.virtual_folder_id`.

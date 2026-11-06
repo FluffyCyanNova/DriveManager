@@ -34,7 +34,8 @@ worker claims job (atomic UPDATE QUEUED→VALIDATING)
   VALIDATING  staged file present and same size
   ALLOCATING  AUTO: choose account | MANUAL: use the chosen one;  live quota check;  destination folder check
   UPLOADING   Google resumable session, 8 MB chunks; session URL stored encrypted; progress events
-  FINALIZING  verify size, index the file, record activity, refresh quota, delete staged copy
+  FINALIZING  verify size, index the file, add it to the chosen virtual folder (optional), record activity,
+              refresh quota, delete staged copy
   COMPLETED | FAILED (retryable) | CANCELLED
 ```
 Safety properties (each covered by tests in `backend/tests/test_upload_runner.py`):
@@ -54,10 +55,18 @@ Safety properties (each covered by tests in `backend/tests/test_upload_runner.py
 The staging area is cleaned after completion/cancel, failed jobs after `STAGING_RETENTION_HOURS`, and orphans after an hour.
 
 ## Quotas are not pooled
-Each Google account has its own limit. The UI shows accounts side by side and never presents a combined "free space" figure. The only sum shown is "stored in total", clearly labelled.
+Each Google account has its own limit, and a file is never split across accounts. The dashboard shows one combined bar for convenience (used space plus each account's free space in its own colour), but always next to the **largest single free space**, since that is the biggest file that can actually be uploaded. Per-account cards show each quota on its own.
 
 ## Virtual folders
 Pure references `(account_id, google_file_id)` with a cached name. Deleting a virtual folder or item never touches Google Drive. Items whose file disappears or is trashed stay visible with a status badge ("No longer in Drive", "In trash", "Account needs reconnecting").
+
+An upload can name a virtual folder (`upload_jobs.virtual_folder_id`). The worker adds the file once the Google upload completes. If that virtual folder was deleted in the meantime, the upload still completes and the add is skipped.
+
+## Deleting
+*Move to trash* is the default and is recoverable. *Delete permanently* (row menu or bulk bar, from anywhere, not only Trash) and *Empty trash* always need an explicit confirmation, and the API requires `confirm=true`. Permanently deleting a folder also removes its descendants from the local index, the same way Google does: items the account owns, or everything in a shared drive. Items owned by other people just lose that parent, and the next sync settles them.
+
+## Hide emails (privacy mode)
+A switch in the sidebar replaces every email address shown in the UI with a stable alias such as `user-k3f9x2`. That includes chips, lists, charts, server messages and notifications. It also hides Google display names. The same address always gets the same alias, and account colours stay the same, so accounts remain easy to tell apart. It is **display only**, meant for screenshots and screen sharing: the API, the logs and the database still hold the real addresses. The setting is stored per browser.
 
 ## Security model
 * Single local user. Password stored as an Argon2id hash (in `.env`; changes made in the app are stored in the DB and take precedence). Constant-time compare, equalised timing for wrong usernames, 5 failures per 15 minutes per IP.
