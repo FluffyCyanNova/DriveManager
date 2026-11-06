@@ -69,7 +69,8 @@ export default function Layout() {
         <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
           <img src="/favicon.svg" alt="" className="h-7 w-7" />
           <div className="flex min-w-0 flex-col leading-tight">
-            <span className="text-[15px] font-semibold tracking-tight">DriveManager</span>
+            <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
+              className="w-fit text-[15px] font-semibold tracking-tight hover:text-primary hover:underline">DriveManager</a>
             <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
               className="w-fit text-xs text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
           </div>

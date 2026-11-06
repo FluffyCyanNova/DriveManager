@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Globe2, Link2, Lock, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { onError, Spinner } from "@/components/Common";
+import { FileIcon } from "@/components/FileBits";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -65,10 +66,14 @@ export function ShareDialog({ item, onClose }: { item: DriveItem | null; onClose
   const busy = link.isPending || add.isPending || change.isPending || remove.isPending;
   const close = () => { setEmails(""); setMessage(""); onClose(); };
   return (
-    <Dialog open={!!item} onOpenChange={(o) => !o && close()} title={`Share “${item?.name ?? ""}”`} className="max-w-lg"
+    <Dialog open={!!item} onOpenChange={(o) => !o && close()} title="Share" className="max-w-lg"
       description={s && !s.can_share ? "Google doesn't allow this account to change sharing for this item. You can still see who has access." : "Changes apply in Google Drive right away."}>
       {q.isLoading || !s ? <Spinner /> : (
         <div className="space-y-5">
+          <div className="flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm">
+            <FileIcon mime={item!.mime_type} />
+            <span className="min-w-0 flex-1 truncate font-medium" title={item!.name}>{item!.name}</span>
+          </div>
           {/* General access */}
           <section className="space-y-2">
             <h3 className="text-sm font-semibold">General access</h3>
@@ -89,8 +94,8 @@ export function ShareDialog({ item, onClose }: { item: DriveItem | null; onClose
           {s.can_share && (
             <section className="space-y-2">
               <Label htmlFor="share-emails">Add people</Label>
-              <div className="flex gap-2">
-                <Input id="share-emails" placeholder="name@example.com, another@example.com" value={emails} onChange={(e) => setEmails(e.target.value)}
+              <div className="flex min-w-0 gap-2">
+                <Input id="share-emails" className="min-w-0" placeholder="name@example.com, another@example.com" value={emails} onChange={(e) => setEmails(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && emails.trim()) add.mutate(); }} />
                 <Select aria-label="Role for new people" className="w-auto" value={role} onChange={(e) => setRole(e.target.value as ShareRole)}>
                   {(Object.keys(ROLE_LABEL) as ShareRole[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</Select>
