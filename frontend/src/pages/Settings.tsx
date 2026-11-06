@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, FolderOpen, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, FolderOpen, Pin, PinOff, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AccountChip, onError, PageHeader, Spinner } from "@/components/Common";
 import { FolderPicker } from "@/components/FolderPicker";
-import { rememberSidebar, type SidebarState, useSidebarOrder } from "@/components/SidebarNav";
+import { NAV_ITEMS, useSidebar } from "@/components/SidebarNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,19 +128,33 @@ function PasswordCard() {
 }
 
 function SidebarCard() {
-  const qc = useQueryClient();
-  const q = useSidebarOrder();
-  const reset = useMutation({
-    mutationFn: () => api.del<SidebarState>("/api/settings/sidebar"),
-    onSuccess: (st) => { qc.setQueryData(["sidebar"], st); rememberSidebar(st); toast.success("Sidebar order reset."); },
-    onError,
-  });
+  const sb = useSidebar();
+  const rowFor = (key: string, pinned: boolean, i: number, n: number) => {
+    const it = NAV_ITEMS[key];
+    const Icon = it.icon;
+    return (
+      <li key={key} className="flex items-center gap-2 px-3 py-2 text-sm">
+        <Icon className="h-4 w-4 text-muted-foreground" /><span className="flex-1">{it.label}</span>
+        <Button size="icon" variant="ghost" aria-label={`Move ${it.label} up`} disabled={i === 0 || sb.saving} onClick={() => sb.step(key, -1)}><ArrowUp className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" aria-label={`Move ${it.label} down`} disabled={i === n - 1 || sb.saving} onClick={() => sb.step(key, 1)}><ArrowDown className="h-4 w-4" /></Button>
+        <Button size="sm" variant={pinned ? "secondary" : "ghost"} className="w-24" disabled={sb.saving} onClick={() => sb.togglePin(key)}>
+          {pinned ? <><PinOff className="h-3.5 w-3.5" />Unpin</> : <><Pin className="h-3.5 w-3.5" />Pin</>}</Button>
+      </li>);
+  };
   return (
     <Card><CardHeader><CardTitle>Sidebar</CardTitle>
-      <CardDescription>Drag items in the sidebar to change their order, or focus one and press Alt + ↑/↓. Dashboard stays pinned at the top. The order is saved on the server, so it's the same on every device.</CardDescription></CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" disabled={!q.data?.customized || reset.isPending} onClick={() => reset.mutate()}>Reset to default order</Button>
-        <span className="text-sm text-muted-foreground">{q.data?.customized ? "Custom order in use." : "Using the default order."}</span>
+      <CardDescription>Pinned items stay in a group at the top and can't be dragged. Reorder the rest by dragging them in the sidebar (Alt + ↑/↓ on the keyboard) or with the arrows here, which also work on phones. Long-press or right-click a sidebar item to pin it. Saved on the server, so it's the same on every device.</CardDescription></CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div><h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pinned</h3>
+            <ul className="divide-y rounded-md border">{sb.pinned.length ? sb.pinned.map((k, i) => rowFor(k, true, i, sb.pinned.length)) : <li className="px-3 py-2 text-sm text-muted-foreground">Nothing pinned.</li>}</ul></div>
+          <div><h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Others</h3>
+            <ul className="divide-y rounded-md border">{sb.unpinned.map((k, i) => rowFor(k, false, i, sb.unpinned.length))}</ul></div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" disabled={!sb.state.customized || sb.reset.isPending} onClick={() => sb.reset.mutate(undefined, { onSuccess: () => toast.success("Sidebar reset to the default order and pins.") })}>Reset order and pins</Button>
+          <span className="text-sm text-muted-foreground">{sb.state.customized ? "Custom layout in use." : "Default layout (Dashboard pinned)."}</span>
+        </div>
       </CardContent></Card>
   );
 }

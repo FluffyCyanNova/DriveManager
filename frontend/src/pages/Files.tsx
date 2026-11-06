@@ -105,6 +105,19 @@ function DriveBrowser() {
   const [emptying, setEmptying] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => { setQ(qInput.trim()); setPage(1); }, 300); return () => clearTimeout(t); }, [qInput]);
+  // Sidebar search (or a shared link) sets ?q=: search everything, i.e. all accounts and every location except Trash.
+  const urlQ = search.get("q") ?? "";
+  useEffect(() => {
+    if (urlQ === qInput) return;
+    setQInput(urlQ);
+    if (urlQ) { setAccountId(""); setBaseLoc("my_drive"); setStack([]); }
+  }, [urlQ]); // eslint-disable-line react-hooks/exhaustive-deps
+  const typeSearch = (v: string) => {
+    setQInput(v);
+    const next = new URLSearchParams(search);
+    if (v) next.set("q", v); else next.delete("q");
+    setSearch(next, { replace: true });
+  };
   useEffect(() => { setSel(new Set()); }, [loc, stack, q, accountId, type, page]);
 
   const top = stack[stack.length - 1];
@@ -188,10 +201,11 @@ function DriveBrowser() {
     if (l === "trash") setSearch({ view: "trash" });
     else { setBaseLoc(l); if (search.get("view")) setSearch({}); }
     setStack([]); setPage(1); setQInput("");
+    if (search.get("q")) { const n = new URLSearchParams(search); n.delete("q"); if (l === "trash") n.set("view", "trash"); setSearch(n, { replace: true }); }
   };
   // Also reset when the view changes from outside (sidebar links, browser back/forward).
   useEffect(() => { setStack([]); setPage(1); }, [loc]);
-  const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { setQInput(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
+  const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { typeSearch(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
 
   const menu = (it: DriveItem) => [
     { label: "Open in Google Drive", icon: <ExternalLink className="h-4 w-4" />, hidden: !it.web_view_link, onSelect: () => window.open(it.web_view_link!, "_blank", "noopener") },
@@ -214,7 +228,7 @@ function DriveBrowser() {
           {([["my_drive", "My Drive"], ["shared_with_me", "Shared with me"], ["shared_drive", "Shared drives"], ["trash", "Trash"]] as const).map(([k, t]) => (
             <button key={k} role="tab" aria-selected={loc === k} onClick={() => go(k)} className={cn("rounded px-3 py-1 text-sm", loc === k ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>{t}</button>))}
         </div>
-        <div className="relative min-w-48 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => setQInput(e.target.value)} /></div>
+        <div className="relative min-w-48 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
         {canMkdir && <Button variant="outline" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
       </div>
       {/* Filters on their own row; w-auto lets each select size to its longest option so labels never get cut off. */}

@@ -1,11 +1,12 @@
-import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Sun } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Sun } from "lucide-react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { GlobalSearch, useSearchShortcut } from "@/components/GlobalSearch";
 import { SidebarNav } from "@/components/SidebarNav";
 import { Toaster } from "@/components/Toaster";
 import { useAccounts, useHealth } from "@/hooks/queries";
 import { useEvents } from "@/hooks/useEvents";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { api } from "@/services/api";
 import { useAuth } from "@/stores/auth";
 import { toast, useUI } from "@/stores/ui";
@@ -16,6 +17,17 @@ import { useMask, usePrivacy } from "@/utils/privacy";
 export default function Layout() {
   const m = useMask();
   const toggleHideEmails = usePrivacy((s) => s.toggleHideEmails);
+  // Global search: a box above Sync now on desktop; on phones a search icon opens it under the header.
+  const loc = useLocation();
+  const searching = loc.pathname === "/files" && !!new URLSearchParams(loc.search).get("q");
+  const [mobileSearch, setMobileSearch] = useState(false);
+  const desktopSearch = useRef<HTMLInputElement>(null);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
+  const focusSearch = useCallback(() => {
+    if (window.matchMedia("(min-width: 768px)").matches) desktopSearch.current?.focus();
+    else { setMobileSearch(true); setTimeout(() => mobileSearchRef.current?.focus(), 0); }
+  }, []);
+  useSearchShortcut(focusSearch);
   const hideLabel = m.hide ? "Show emails" : "Hide emails";
   useEvents();
   const { dark, toggleDark } = useUI();
@@ -60,14 +72,17 @@ export default function Layout() {
               className="w-fit text-xs text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
           </div>
           <div className="ml-auto flex gap-1 md:hidden">
+            <button onClick={() => (mobileSearch || searching ? setMobileSearch(false) : focusSearch())} className={cn("rounded p-1.5 hover:bg-accent", (mobileSearch || searching) && "bg-accent")} aria-label="Search everything" aria-expanded={mobileSearch || searching}><Search className="h-4 w-4" /></button>
             <button onClick={syncAll} disabled={busy || connected.length === 0} className="rounded p-1.5 hover:bg-accent disabled:opacity-60" aria-label={syncLabel} title={syncLabel}><RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} /></button>
             <button onClick={toggleHideEmails} className="rounded p-1.5 hover:bg-accent" aria-label={hideLabel} aria-pressed={m.hide} title={hideLabel}>{m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             <button onClick={toggleDark} className="rounded p-1.5 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
             <button onClick={logout} className="rounded p-1.5 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
+        {(mobileSearch || searching) && <GlobalSearch ref={mobileSearchRef} className="px-2 pb-2 md:hidden" onDone={() => setMobileSearch(false)} />}
         <SidebarNav />
         <div className="mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:block md:w-56">
+          <GlobalSearch ref={desktopSearch} className="mb-2" />
           <button onClick={syncAll} disabled={busy || connected.length === 0} title={syncLabel}
             className="mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">
             <RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} />
