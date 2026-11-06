@@ -48,6 +48,8 @@ const readFolders = (): FolderPlacement => {
   try { const v = localStorage.getItem(FOLDERS_KEY); return v === "last" || v === "mixed" ? v : "first"; } catch { return "first"; }
 };
 
+const SEPARATOR = "my-3 border-0 border-t border-border/50";
+
 export default function Files() {
   // The view lives in the URL (?view=trash|virtual) so the sidebar's Trash and Virtual folders links can open it directly.
   const [search, setSearch] = useSearchParams();
@@ -56,12 +58,13 @@ export default function Files() {
   return (
     <>
       <PageHeader title="Files" description="Browse every connected account in one place. Changes are made in Google Drive itself." />
-      <div className="mb-5 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
       <div role="tablist" className="inline-flex rounded-lg border bg-card p-1">
         {([["drive", "Google Drive", FolderTree], ["virtual", "Virtual folders", Link2]] as const).map(([k, t, Icon]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" />{t}</button>))}
       </div>
       </div>
+      <hr className={SEPARATOR} />
       {tab === "drive" ? <DriveBrowser /> : <VirtualBrowser />}
     </>
   );
@@ -314,7 +317,8 @@ function DriveBrowser() {
             title="List every file in every folder of this tab as one flat list">
             <input type="checkbox" checked={allFiles} onChange={(e) => setAllFiles(e.target.checked)} />Show all files</label>)}
       </div>
-      <div className="relative mb-4"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
+      <div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
+      <hr className={SEPARATOR} />
 
       {(stack.length > 0 && !q) && (
         <nav aria-label="Folder path" className="mb-3 flex flex-wrap items-center gap-1 text-sm">
