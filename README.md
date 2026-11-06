@@ -65,6 +65,20 @@ scripts\update.ps1    # backs up, rebuilds the images, restarts; database migrat
 
 Then reload the app in your browser. Your data lives in Docker volumes and is not touched by an update.
 
+## Logs
+
+The backend and worker write rotating log files (`backend.log`, `worker.log`; 5 MB each, 5 old copies kept) to the `drivemanager_drive_manager_logs` Docker volume. Tokens, passwords and the client secret are redacted. Email addresses and file names are not, since **Hide emails** only changes what's on screen.
+
+```powershell
+scripts\logs.ps1            # follow live output of all services (Ctrl+C to stop)
+scripts\logs.ps1 worker     # just one: backend, worker or frontend
+scripts\get-logs.ps1        # copy everything into .\logs\ to read or share
+```
+
+`get-logs.ps1` saves `logs\backend.log` and `logs\worker.log`, plus `logs\console.log` with recent output from every container. That includes the frontend (nginx), which has no log file of its own. Add `-Tail 0` to include all console output Docker still has. The `logs\` folder is git-ignored. Docker clears console output when containers are recreated (for example by an update), but the log files are kept.
+
+Which to check: **worker** for uploads, syncs and storage refreshes; **backend** for anything that failed when you clicked it; **frontend** only if the page doesn't load at all. Errors that happen inside the page itself show up in the browser console (F12 → Console), not in these logs.
+
 ## Documentation
 | | |
 |---|---|
@@ -82,7 +96,8 @@ docker/        Dockerfiles + nginx configs (backend, worker, frontend)
 backend/       FastAPI app (app/), Alembic migrations, tests
   app/api  app/core  app/database  app/integrations/google_drive  app/services  app/workers  app/websocket
 frontend/      React + TypeScript + Vite + Tailwind
-scripts/       setup / start / stop / logs / backup / restore / update / make-cert (PowerShell)
+scripts/       setup / start / stop / logs / get-logs / backup / restore / update / make-cert (PowerShell)
+logs/          Copies of the logs made by scripts\get-logs.ps1 (git-ignored)
 docs/          Documentation and screenshots
 ```
 
@@ -102,7 +117,7 @@ For a local backend, set the variables from `.env.example` in your shell (at lea
 ## Testing and CI
 GitHub Actions runs on every pull request and every push to `main`. It runs the backend test suite (50 tests: auth/CSRF/origin, encryption and log redaction, allocation rules, file index queries and sorting, deleting and emptying trash, virtual folders including uploads into them, the upload runner against a simulated Google, sync including cursor recovery), plus a TypeScript type-check and a production frontend build.
 
-Everything Google-facing is tested against fakes, so real Google API behaviour is only exercised when you run it. If something misbehaves, `scripts\logs.ps1` is the first place to look.
+Everything Google-facing is tested against fakes, so real Google API behaviour is only exercised when you run it. If something misbehaves, see [Logs](#logs) below.
 
 ## Known limitations
 No pause button for uploads (cancel, retry and auto-resume exist). No cross-account move or copy. Single user. Google-native exports are limited to ~10 MB by Google. The app must be opened at the registered redirect address (`http://localhost:8000`) to connect accounts.
