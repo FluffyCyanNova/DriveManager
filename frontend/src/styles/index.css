@@ -51,6 +51,32 @@
 
 * { border-color: hsl(var(--border)); }
 
+/* Native dropdowns: some browsers (e.g. Chrome/Edge on Windows) draw the open list in light colours unless the
+   options themselves are coloured, even in dark mode. */
+select { color-scheme: inherit; }
+select option, select optgroup { background-color: hsl(var(--card)); color: hsl(var(--foreground)); }
+select option:checked { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+select option:disabled { color: hsl(var(--muted-foreground)); }
+
+/* Checkboxes drawn in theme colours (the browser's own box stays white in dark mode on some systems). */
+input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; flex-shrink: 0;
+  width: 1rem; height: 1rem; margin: 0; border-radius: 0.25rem; cursor: pointer;
+  border: 1.5px solid hsl(var(--muted-foreground) / 0.6); background-color: hsl(var(--card));
+  display: inline-grid; place-content: center; vertical-align: middle;
+  transition: background-color .1s, border-color .1s;
+}
+input[type="checkbox"]:hover { border-color: hsl(var(--primary)); }
+input[type="checkbox"]:checked { background-color: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+input[type="checkbox"]:checked::after {
+  content: ""; width: 0.55rem; height: 0.3rem; margin-top: -0.12rem;
+  border-left: 2px solid hsl(var(--primary-foreground)); border-bottom: 2px solid hsl(var(--primary-foreground)); transform: rotate(-45deg);
+}
+input[type="checkbox"]:indeterminate { background-color: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+input[type="checkbox"]:indeterminate::after { content: ""; width: 0.5rem; height: 2px; background: hsl(var(--primary-foreground)); }
+input[type="checkbox"]:disabled { opacity: .5; cursor: not-allowed; }
+input[type="checkbox"]:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
 /* Thin, theme-coloured scrollbars everywhere (sidebar, tables, dialogs, page). */
 * { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
