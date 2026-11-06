@@ -27,7 +27,8 @@ class RetryBody(BaseModel):
 
 @router.post("")
 def create_upload(request: Request, file: UploadFile = File(...), mode: str = Form("MANUAL"), account_id: str | None = Form(None),
-                  folder_id: str | None = Form(None), folder_name: str | None = Form(None), db: Session = Depends(get_db)):
+                  folder_id: str | None = Form(None), folder_name: str | None = Form(None),
+                  virtual_folder_id: str | None = Form(None), db: Session = Depends(get_db)):
     s = get_settings()
     declared = int(request.headers.get("content-length") or 0)
     os.makedirs(os.path.join(s.staging_dir, "jobs"), exist_ok=True)
@@ -42,7 +43,8 @@ def create_upload(request: Request, file: UploadFile = File(...), mode: str = Fo
             shutil.copyfileobj(file.file, out, 1024 * 1024)
         size = os.path.getsize(path)
         job = uploads.create(db, job_id=job_id, filename=name, size=size, mime=file.content_type, path=path, mode=mode.upper(),
-                             account_id=account_id, folder_id=folder_id, folder_name=folder_name)
+                             account_id=account_id, folder_id=folder_id, folder_name=folder_name,
+                             virtual_folder_id=virtual_folder_id)
     except OSError:
         shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         raise AppError(507, "STAGING_FAILED", "Writing the file to the server failed (disk full?).") from None

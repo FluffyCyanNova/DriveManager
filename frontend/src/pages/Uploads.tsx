@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, CloudUpload, FolderOpen, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
-import { useRef, useState, type DragEvent } from "react";
+import { AlertCircle, CheckCircle2, CloudUpload, FolderOpen, Link2, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
+import { useMemo, useRef, useState, type DragEvent } from "react";
 import { AccountChip, EmptyState, onError, PageHeader, Spinner } from "@/components/Common";
 import { FolderPicker, type PickedFolder } from "@/components/FolderPicker";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +12,11 @@ import { Progress } from "@/components/ui/progress";
 import { useAccounts } from "@/hooks/queries";
 import { ApiError, api } from "@/services/api";
 import { toast } from "@/stores/ui";
-import type { UploadJob } from "@/types";
+import type { UploadJob, VFolder } from "@/types";
 import { cn } from "@/utils/cn";
 import { bytes } from "@/utils/format";
 
-interface Params { mode: "MANUAL" | "AUTO"; accountId: string; folder: PickedFolder | null }
+interface Params { mode: "MANUAL" | "AUTO"; accountId: string; folder: PickedFolder | null; virtualFolderId: string }
 interface Local { key: string; file: File; params: Params; sent: number; status: "waiting" | "sending" | "error"; error?: string }
 
 const STATE: Record<string, string> = { QUEUED: "Waiting for the worker", VALIDATING: "Checking file", ALLOCATING: "Choosing account", UPLOADING: "Uploading to Google", FINALIZING: "Finishing up", COMPLETED: "Done", FAILED: "Failed", CANCELLED: "Cancelled" };
@@ -36,6 +36,19 @@ export default function Uploads() {
   const running = useRef(0);
   const input = useRef<HTMLInputElement>(null);
   const [retrying, setRetrying] = useState<UploadJob | null>(null);
+  const [virtualFolderId, setVirtualFolderId] = useState("");
+  const vtree = useQuery({ queryKey: ["virtual-tree"], queryFn: () => api.get<VFolder[]>("/api/virtual-folders") });
+  // Full paths ("Work / Invoices") in tree order, so nested virtual folders are easy to tell apart.
+  const vpaths = useMemo(() => {
+    const all = vtree.data ?? [];
+    const kids = (pid: string | null) => all.filter((f) => f.parent_id === pid).sort((a, b) => a.name.localeCompare(b.name));
+    const out: { id: string; path: string }[] = [];
+    const walk = (pid: string | null, prefix: string) => kids(pid).forEach((f) => { const path = prefix ? `${prefix} / ${f.name}` : f.name; out.push({ id: f.id, path }); walk(f.id, path); });
+    walk(null, "");
+    return out;
+  }, [vtree.data]);
+  const vname = (id: string | null) => (id ? vpaths.find((v) => v.id === id)?.path ?? null : null);
+  const chosenVirtual = vpaths.some((v) => v.id === virtualFolderId) ? virtualFolderId : "";
 
   const jobs = useQuery({ queryKey: ["uploads", "list"], queryFn: () => api.get<UploadJob[]>("/api/uploads?limit=100"), refetchInterval: (q) => ((q.state.data ?? []).some((j) => !["COMPLETED", "FAILED", "CANCELLED"].includes(j.state)) ? 3000 : 20000) });
   const effectiveAccount = accountId || active[0]?.id || "";
@@ -50,6 +63,7 @@ export default function Uploads() {
       form.append("mode", it.params.mode);
       if (it.params.mode === "MANUAL") form.append("account_id", it.params.accountId);
       if (it.params.folder?.id) { form.append("folder_id", it.params.folder.id); form.append("folder_name", it.params.folder.name); }
+      if (it.params.virtualFolderId) form.append("virtual_folder_id", it.params.virtualFolderId);
       form.append("file", it.file);
       api.upload("/api/uploads", form, (sent) => patch(it.key, { sent }))
         .then(() => { setLocal((l) => l.filter((x) => x.key !== it.key)); qc.invalidateQueries({ queryKey: ["uploads"] }); })
@@ -61,7 +75,7 @@ export default function Uploads() {
     const list = Array.from(files);
     if (!list.length) return;
     if (mode === "MANUAL" && !effectiveAccount) { toast.error("Connect an account first."); return; }
-    const params: Params = { mode, accountId: effectiveAccount, folder: mode === "MANUAL" ? folder : null };
+    const params: Params = { mode, accountId: effectiveAccount, folder: mode === "MANUAL" ? folder : null, virtualFolderId: chosenVirtual };
     const items = list.map((file, i) => ({ key: `${Date.now()}-${i}-${file.name}`, file, params, sent: 0, status: "waiting" as const }));
     queue.current.push(...items);
     setLocal((l) => [...l, ...items]);
@@ -93,6 +107,11 @@ export default function Uploads() {
               <div className="space-y-1.5"><Label>Folder</Label>
                 <Button variant="outline" className="w-full justify-start" onClick={() => setPickFolder(true)} disabled={!effectiveAccount}><FolderOpen className="h-4 w-4" /><span className="truncate">{folder?.name ?? "My Drive (root)"}</span></Button></div>
             </div>)}
+          <div className="space-y-1.5 sm:max-w-[calc(50%-0.5rem)]"><Label htmlFor="vfolder">Also add to virtual folder <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Select id="vfolder" value={chosenVirtual} onChange={(e) => setVirtualFolderId(e.target.value)}>
+              <option value="">Don't add to a virtual folder</option>
+              {vpaths.map((v) => <option key={v.id} value={v.id}>{v.path}</option>)}</Select>
+            <p className="text-xs text-muted-foreground">{vpaths.length === 0 ? "You have no virtual folders yet. Create one under Files → Virtual folders." : "Each file is added once its upload to Google finishes."}</p></div>
           <div onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop}
             className={cn("flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors", drag ? "border-primary bg-accent" : "border-border")}>
             <CloudUpload className="h-8 w-8 text-muted-foreground" />
@@ -123,7 +142,8 @@ export default function Uploads() {
               <li key={j.id} className="space-y-2 px-5 py-4 text-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0"><p className="truncate font-medium">{j.filename}</p>
-                    <p className="text-xs text-muted-foreground">{bytes(j.size)}{j.account_id ? <> → <AccountChip id={j.account_id} email={j.account_email} /></> : " → account not chosen yet"}{j.destination_folder_name ? ` / ${j.destination_folder_name}` : ""}</p></div>
+                    <p className="text-xs text-muted-foreground">{bytes(j.size)}{j.account_id ? <> → <AccountChip id={j.account_id} email={j.account_email} /></> : " → account not chosen yet"}{j.destination_folder_name ? ` / ${j.destination_folder_name}` : ""}</p>
+                    {j.virtual_folder_id && <p className="flex items-center gap-1 text-xs text-muted-foreground"><Link2 className="h-3 w-3" />{j.state === "COMPLETED" ? "Added to" : "Will be added to"} {vname(j.virtual_folder_id) ?? "a virtual folder that was removed"}</p>}</div>
                   <div className="flex items-center gap-2">
                     {j.state === "COMPLETED" ? <Badge tone="success"><CheckCircle2 className="h-3 w-3" />Done</Badge> : j.state === "FAILED" ? <Badge tone="danger"><AlertCircle className="h-3 w-3" />Failed</Badge> : j.state === "CANCELLED" ? <Badge>Cancelled</Badge> : <Badge tone="info">{j.cancel_requested ? "Cancelling" : STATE[j.state]}</Badge>}
                     {busy && !j.cancel_requested && <Button size="sm" variant="outline" onClick={() => cancel.mutate(j.id)}>Cancel</Button>}

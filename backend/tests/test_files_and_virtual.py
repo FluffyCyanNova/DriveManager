@@ -1,6 +1,8 @@
 import pytest
 
 from app.database.repositories.files import FileQuery, run
+from app.core.encryption import encrypt
+from app.database.models import Account
 from app.services import sync
 
 
@@ -110,3 +112,20 @@ def test_empty_trash_requires_confirm_and_removes_owned_my_drive_trash(authed, d
     assert r.status_code == 200 and r.json() == {"ok": True, "removed": 1} and calls == ["empty"]
     db.expire_all()
     assert sorted(names(db, trashed=True)) == ["drive-trash.txt", "not-mine.txt"]
+
+
+def test_folder_placement_toggle(db, indexed):
+    assert names(db, account_id=indexed.id, location="my_drive") == ["Projects", "root.txt"]
+    assert names(db, account_id=indexed.id, location="my_drive", folders="last") == ["root.txt", "Projects"]
+    sync.upsert_files(db, indexed, [meta("a1", "aaa.txt", ["ROOT1"]), meta("z1", "Zeta", ["ROOT1"], FOLDER, size=None)])
+    assert names(db, account_id=indexed.id, location="my_drive", folders="mixed") == ["aaa.txt", "Projects", "root.txt", "Zeta"]
+    assert names(db, account_id=indexed.id, location="my_drive", folders="first", direction="desc") == ["Zeta", "Projects", "root.txt", "aaa.txt"]
+
+
+def test_sort_by_account_and_api_params(authed, db, indexed):
+    other = Account(google_sub="sub-0", email="zed@example.com", encrypted_refresh_token=encrypt("rt"), root_folder_id="ROOT0")
+    db.add(other); db.commit()
+    sync.upsert_files(db, other, [meta("o1", "aaa.txt", ["ROOT0"])])
+    r = authed.get("/api/files", params={"location": "my_drive", "sort": "account", "folders": "mixed"}).json()
+    assert [i["name"] for i in r["items"]] == ["Projects", "root.txt", "aaa.txt"]   # by account, then name
+    assert authed.get("/api/files", params={"folders": "sideways"}).status_code == 422

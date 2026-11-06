@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/utils/cn";
 
 export interface ColumnSpec { width: number; min: number; max?: number }
@@ -72,15 +73,25 @@ interface HeadProps {
   onFit: () => void;
   className?: string;
   children?: ReactNode;
+  /** When set, the label becomes a button that sorts by this column. `sorted` is the current direction if it's the active sort. */
+  onSort?: () => void;
+  sorted?: "asc" | "desc" | null;
 }
 
 /** A header cell with a drag handle on its right edge (double-click to fit, arrow keys to nudge). */
-export function ResizableTh({ label, width, onResize, onFit, className, children }: HeadProps) {
+export function ResizableTh({ label, width, onResize, onFit, className, children, onSort, sorted }: HeadProps) {
   const start = useRef<{ x: number; w: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   return (
-    <th className={cn("relative select-none px-2 py-2.5", className)}>
-      <span className="block truncate">{children ?? label}</span>
+    <th className={cn("relative select-none px-2 py-2.5", className)} aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}>
+      {onSort ? (
+        <button type="button" onClick={onSort} title={`Sort by ${label}`}
+          className={cn("inline-flex max-w-full items-center gap-1 rounded uppercase tracking-wide hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            sorted && "text-foreground")}>
+          <span className="truncate">{children ?? label}</span>
+          {sorted === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : sorted === "desc" ? <ArrowDown className="h-3 w-3 shrink-0" /> : null}
+        </button>
+      ) : <span className="block truncate">{children ?? label}</span>}
       <span
         role="separator"
         aria-orientation="vertical"

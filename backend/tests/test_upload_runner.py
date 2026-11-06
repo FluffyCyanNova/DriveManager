@@ -63,7 +63,8 @@ def stage(db, account, size, mode="MANUAL", name="f.bin", content=None, **kw):
     content = content if content is not None else os.urandom(size)
     open(path, "wb").write(content)
     job = uploads.create(db, job_id=job_id, filename=name, size=len(content), mime=None, path=path, mode=mode,
-                         account_id=account.id if mode == "MANUAL" else None, folder_id=kw.get("folder_id"), folder_name=None)
+                         account_id=account.id if mode == "MANUAL" else None, folder_id=kw.get("folder_id"), folder_name=None,
+                         virtual_folder_id=kw.get("virtual_folder_id"))
     return job, content
 
 
@@ -190,3 +191,27 @@ def test_upload_api_validation_and_flow(authed, account, g):
     assert body["filename"] == "passwd" and body["state"] == "QUEUED" and body["size"] == 5       # path traversal neutralised
     assert authed.post(f"/api/uploads/{body['id']}/cancel").json()["state"] == "CANCELLED"
     assert authed.delete(f"/api/uploads/{body['id']}").status_code == 200
+
+
+def test_completed_upload_is_added_to_chosen_virtual_folder(db, account, g):
+    from app.services import virtual_folders
+    vf = virtual_folders.create(db, "Inbox", None)
+    job, _ = stage(db, account, 1024, virtual_folder_id=vf.id)
+    upload_runner.run(job.id)
+    assert fresh(db, job).state == "COMPLETED"
+    items = virtual_folders.list_items(db, vf.id)["items"]
+    assert [(i["google_file_id"], i["status"]) for i in items] == [("G1", "ok")]
+
+
+def test_upload_still_completes_if_virtual_folder_was_deleted(db, account, g):
+    from app.services import virtual_folders
+    vf = virtual_folders.create(db, "Gone", None)
+    job, _ = stage(db, account, 1024, virtual_folder_id=vf.id)
+    virtual_folders.delete(db, vf.id)
+    upload_runner.run(job.id)
+    assert fresh(db, job).state == "COMPLETED"
+
+
+def test_upload_api_rejects_unknown_virtual_folder(authed, account, g):
+    r = authed.post("/api/uploads", files={"file": ("a.txt", b"hello")}, data={"mode": "MANUAL", "account_id": account.id, "virtual_folder_id": "nope"})
+    assert r.status_code == 404 and r.json()["error"]["code"] == "FOLDER_NOT_FOUND"

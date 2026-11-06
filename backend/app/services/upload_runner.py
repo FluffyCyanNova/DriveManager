@@ -19,6 +19,7 @@ from sqlalchemy import select
 
 from app.config import get_settings
 from app.core.encryption import decrypt, encrypt
+from app.core.exceptions import AppError
 from app.core.time import utcnow
 from app.database.database import session_scope
 from app.database.models import Account, UploadJob
@@ -178,12 +179,24 @@ def _run(job_id: str) -> None:
             {"state": "COMPLETED", "google_file_id": meta["id"], "bytes_uploaded": job["size"], "finished_at": utcnow(),
              "error_code": None, "error_message": None, "resumable_uri_enc": None})
         db.commit()
+        if job.get("virtual_folder_id"):
+            _add_to_virtual_folder(db, job["virtual_folder_id"], acc.id, meta["id"])
         events.record_activity(db, "upload", account=acc, google_file_id=meta["id"], file_name=job["filename"],
                                details={"size": job["size"], "reason": job["allocation_reason"]})
         quota.refresh(db, acc)
         events.publish(db, "upload.completed", {"id": job_id})
         events.publish(db, "files.changed", {"account_id": acc.id})
     cleanup_staging(UploadJob(staged_path=job["staged_path"]))
+
+
+def _add_to_virtual_folder(db, folder_id: str, account_id: str, google_file_id: str) -> None:
+    """Best effort: the file is already safely in Drive, so a missing or removed virtual folder must not fail the upload."""
+    from app.services import virtual_folders
+    try:
+        virtual_folders.add_items(db, folder_id, [{"account_id": account_id, "google_file_id": google_file_id}])
+    except AppError:
+        db.rollback()
+        log.info("Virtual folder %s no longer exists; uploaded file %s was not added to it", folder_id, google_file_id)
 
 
 def _auto_allocate(db, job: dict) -> None:
