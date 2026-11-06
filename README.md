@@ -16,8 +16,9 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 **Files**
 * Browse and search **My Drive, Shared with me, Shared drives and Trash** across all accounts in one list.
 * Filter by account and file type. Sort by name, account, date or size, either from the menu or by **clicking a column header** (click again to flip). Choose **Folders first, Files first or Mixed**; the choice is remembered.
+* **Shift + click** to select a range: tick one file, then Shift + click another file's checkbox (or the empty part of its row) to tick everything in between. Shift + unticking clears the range. Works on the current page.
 * **Right-click** any file or folder (or long-press on phones) for the same actions as its ⋮ menu. If several items are selected, the menu acts on all of them. **Shift + right-click** still gives the browser's own menu.
-* **Show all files**: a toggle that lists every file in every folder of the current tab as one flat list, with the folder each file is in shown under its name (click it to open the folder). Folders themselves are hidden there, and sorting and filters still apply, so "largest files anywhere" is one click. Remembered in your browser.
+* **Show all files**: a toggle that lists every file in every folder of the current tab as one flat list, with the folder each file is in shown under its name (click it to open the folder). Folders themselves are hidden there, and sorting and filters still apply, so "largest files anywhere" is one click. On by default; turning it off is remembered in your browser.
 * Resizable columns: drag the edge, or double-click to fit. The **⋮ actions** button stays pinned to the right however wide the columns get.
 * **Click a file's name** to choose **Download** or **Open in Drive**. Tick *Remember Download or Open in Drive until I reload the page* and later clicks do that straight away. **Share or copy link…** sits on its own line in the same prompt and is never remembered. This works in the Google Drive and Virtual folders tabs.
 * Rename, move, create folders, download (Google Docs/Sheets/Slides export to Office or PDF).

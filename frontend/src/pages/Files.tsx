@@ -83,12 +83,15 @@ function DriveBrowser() {
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [folders, setFolders] = useState<FolderPlacement>(readFolders);
   // "Show all files": every file at any depth in the current tab, as one flat list (remembered in this browser).
-  const [allFiles, setAllFilesState] = useState(() => { try { return localStorage.getItem("dm-files-all") === "1"; } catch { return false; } });
+  const [allFiles, setAllFilesState] = useState(() => { try { return localStorage.getItem("dm-files-all") !== "0"; } catch { return true; } });
   const setAllFiles = (v: boolean) => { setAllFilesState(v); setPage(1); setStack([]); try { localStorage.setItem("dm-files-all", v ? "1" : "0"); } catch { /* storage unavailable */ } };
   useEffect(() => { try { localStorage.setItem(FOLDERS_KEY, folders); } catch { /* storage unavailable */ } }, [folders]);
   const sortBy = (c: Col) => { if (sort === c) setDir(dir === "asc" ? "desc" : "asc"); else { setSort(c); setDir(FIRST_DIR[c]); } setPage(1); };
   const [page, setPage] = useState(1);
   const [sel, setSel] = useState<Set<string>>(new Set());
+  // Shift + click on a checkbox ticks (or unticks) every row between it and the last checkbox clicked, on this page.
+  const anchor = useRef<string | null>(null);
+  const shiftHeld = useRef(false);
   const { widths, setWidth } = useColumnWidths<Col>("dm-files-columns", COLUMNS);
   const tableRef = useRef<HTMLTableElement>(null);
   const showAccount = useMinWidth(768), showModified = useMinWidth(640);
@@ -136,7 +139,7 @@ function DriveBrowser() {
     if (v) next.set("q", v); else next.delete("q");
     setSearch(next, { replace: true });
   };
-  useEffect(() => { setSel(new Set()); }, [loc, stack, q, accountId, type, page]);
+  useEffect(() => { setSel(new Set()); anchor.current = null; }, [loc, stack, q, accountId, type, page]);
 
   const top = stack[stack.length - 1];
   // "Upload files" starts in the folder being browsed (one account's My Drive or a shared drive); otherwise the defaults.
@@ -222,6 +225,18 @@ function DriveBrowser() {
   const pages = Math.max(1, Math.ceil(total / 100));
   const canMkdir = loc !== "trash" && loc !== "shared_with_me" && (top ? true : !!accountId && loc === "my_drive");
   const selected = items.filter((i) => sel.has(i.id));
+  const toggleRow = (id: string, checked: boolean) => {
+    const n = new Set(sel);
+    const from = anchor.current ? items.findIndex((i) => i.id === anchor.current) : -1;
+    const to = items.findIndex((i) => i.id === id);
+    if (shiftHeld.current && from >= 0 && to >= 0) {
+      const [a, b] = from < to ? [from, to] : [to, from];
+      for (const it of items.slice(a, b + 1)) { if (checked) n.add(it.id); else n.delete(it.id); }
+    } else if (checked) n.add(id); else n.delete(id);
+    shiftHeld.current = false;
+    anchor.current = id;
+    setSel(n);
+  };
   const emptyTargets = (accounts.data ?? []).filter((a) => a.status === "ACTIVE" && (!accountId || a.id === accountId));
   const go = (l: Loc) => {
     if (l === "trash") setSearch({ view: "trash" });
@@ -336,9 +351,15 @@ function DriveBrowser() {
               {head("name", "Name")}{head("account", "Account", "hidden md:table-cell")}{head("modified", "Modified", "hidden sm:table-cell")}{head("size", "Size", "text-right")}<th /><th className={STICKY_TH} aria-label="Actions" /></tr></thead>
             <tbody className="divide-y">{items.map((it) => (
               <tr key={it.id} className={cn("group hover:bg-muted/40", sel.has(it.id) && "bg-accent/50", ctxRow === it.id && "bg-muted/60 outline outline-1 -outline-offset-1 outline-primary/50")}
+                onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); /* no text highlighting on shift-click */ }}
+                onClick={(e) => {
+                  if (!e.shiftKey || (e.target as HTMLElement).closest("button, a, input, select, label")) return;
+                  shiftHeld.current = true; toggleRow(it.id, !sel.has(it.id));
+                }}
                 onContextMenu={(e) => { const m = rowMenu(it); if (ctx.onContextMenu(e, m.items, m.title)) setCtxRow(it.id); }}
                 {...longPress((x, y) => { const m = rowMenu(it); ctx.openAt(x, y, m.items, m.title); setCtxRow(it.id); })}>
-                <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${it.name}`} checked={sel.has(it.id)} onChange={(e) => { const n = new Set(sel); e.target.checked ? n.add(it.id) : n.delete(it.id); setSel(n); }} /></td>
+                <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${it.name}`} title="Shift + click to select a range" checked={sel.has(it.id)}
+                  onClick={(e) => { shiftHeld.current = e.shiftKey; }} onChange={(e) => toggleRow(it.id, e.target.checked)} /></td>
                 <td data-col="name" className="px-2 py-2"><div className="flex min-w-0 items-center gap-2.5"><FileIcon mime={it.mime_type} />
                   {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={it.name} onClick={() => openFolder(it)}>{it.name}</button> : <button className="truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it)}>{it.name}</button>}
                   {it.location === "SHARED_WITH_ME" && <span className="shrink-0 rounded bg-secondary px-1.5 text-[11px] text-muted-foreground">shared</span>}</div>
