@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, UploadCloud, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AccountChip, ConfirmDialog, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
@@ -49,7 +49,6 @@ const readFolders = (): FolderPlacement => {
 };
 
 export default function Files() {
-  const openUpload = useUploads((s) => s.openDialog);
   // The view lives in the URL (?view=trash|virtual) so the sidebar's Trash and Virtual folders links can open it directly.
   const [search, setSearch] = useSearchParams();
   const tab = search.get("view") === "virtual" ? "virtual" : "drive";
@@ -62,7 +61,6 @@ export default function Files() {
         {([["drive", "Google Drive", FolderTree], ["virtual", "Virtual folders", Link2]] as const).map(([k, t, Icon]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" />{t}</button>))}
       </div>
-        <Button className="ml-auto" onClick={() => openUpload()}><UploadCloud className="h-4 w-4" />Upload files</Button>
       </div>
       {tab === "drive" ? <DriveBrowser /> : <VirtualBrowser />}
     </>

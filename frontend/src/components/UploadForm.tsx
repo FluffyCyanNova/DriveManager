@@ -120,7 +120,7 @@ export function UploadForm({ prefill, onQueued, compact, initialFiles }: { prefi
   );
 }
 
-/** The "Upload files" dialog (from Files, Virtual folders and the Dashboard). Closes once files are queued. */
+/** The "Upload files" dialog (sidebar / phone top-bar button, or files dropped on the window). Closes once files are queued. */
 export function UploadDialog() {
   const dialog = useUploads((s) => s.dialog);
   const close = useUploads((s) => s.closeDialog);

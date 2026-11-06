@@ -1,4 +1,4 @@
-import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Sun } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Sun, UploadCloud } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch, useSearchShortcut } from "@/components/GlobalSearch";
 import { SIDEBAR_ICONS, SIDEBAR_MAX, SIDEBAR_MIN, SidebarNav, useSidebarWidth } from "@/components/SidebarNav";
@@ -10,6 +10,7 @@ import { useCallback, useRef, useState } from "react";
 import { api } from "@/services/api";
 import { useAuth } from "@/stores/auth";
 import { toast, useUI } from "@/stores/ui";
+import { useUploads } from "@/stores/uploads";
 import { cn } from "@/utils/cn";
 import { useMask, usePrivacy } from "@/utils/privacy";
 import { DropOverlay } from "@/components/DropOverlay";
@@ -51,6 +52,10 @@ export default function Layout() {
   }, []);
   useSearchShortcut(focusSearch);
   const mobileOpen = mobileSearch || searching;
+  // One "Upload files" button for the whole app (sidebar, icons-only strip, phone top bar). Greyed out on the Uploads page.
+  const openUpload = useUploads((s) => s.openDialog);
+  const onUploadsPage = loc.pathname === "/uploads";
+  const uploadLabel = onUploadsPage ? "You're already on the Uploads page" : "Upload files";
   const navigate = useNavigate();
   const closeMobileSearch = () => { setMobileSearch(false); if (searching) navigate("/files", { replace: true }); };
   const hideLabel = m.hide ? "Show emails" : "Hide emails";
@@ -99,18 +104,20 @@ export default function Layout() {
         <div className={cn("flex items-center gap-2.5 px-4 py-3.5 md:py-5", iconsOnly && "md:justify-center md:px-0")}>
           <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
             className="shrink-0 rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
-          <div className={cn("flex min-w-0 flex-col leading-tight", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
+          <div className={cn("flex min-w-0 flex-1 flex-col leading-tight md:flex-none", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
             <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
-              className="w-fit text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline">DriveManager</a>
+              className="max-w-full truncate text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline md:w-fit">DriveManager</a>
             <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
-              className="w-fit text-[11px] text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
+              className="max-w-full truncate text-[11px] text-muted-foreground hover:text-primary hover:underline md:w-fit">@FluffyCyanNova</a>
           </div>
           {/* Phones: the search replaces the title and buttons in the top bar instead of adding a full-width row. */}
           {mobileOpen && <>
             <GlobalSearch ref={mobileSearchRef} className="min-w-0 flex-1 md:hidden" onDone={() => setMobileSearch(false)} />
             <button onClick={closeMobileSearch} className="shrink-0 rounded px-1.5 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-foreground md:hidden">Cancel</button>
           </>}
-          <div className={cn("ml-auto flex gap-1 md:hidden", mobileOpen && "hidden")}>
+          <div className={cn("ml-auto flex shrink-0 gap-0.5 md:hidden", mobileOpen && "hidden")}>
+            <button onClick={() => openUpload()} disabled={onUploadsPage} aria-label={uploadLabel} title={uploadLabel}
+              className="rounded bg-primary p-1.5 text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"><UploadCloud className="h-4 w-4" /></button>
             <button onClick={focusSearch} className="rounded p-1.5 hover:bg-accent" aria-label="Search everything"><Search className="h-4 w-4" /></button>
             <button onClick={syncAll} disabled={busy || connected.length === 0} className="rounded p-1.5 hover:bg-accent disabled:opacity-60" aria-label={syncLabel} title={syncLabel}><RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} /></button>
             <button onClick={toggleHideEmails} className="rounded p-1.5 hover:bg-accent" aria-label={hideLabel} aria-pressed={m.hide} title={hideLabel}>{m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
@@ -121,6 +128,8 @@ export default function Layout() {
         <SidebarNav collapsed={iconsOnly} />
         {iconsOnly && (
           <div className="mt-auto hidden flex-col items-center gap-1.5 pb-4 pt-6 md:absolute md:bottom-0 md:flex md:w-[var(--sb)]">
+            <button onClick={() => openUpload()} disabled={onUploadsPage} aria-label={uploadLabel} title={uploadLabel}
+              className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"><UploadCloud className="h-4 w-4" /></button>
             {([
               ["Search everything (Ctrl + K)", <Search key="s" className="h-4 w-4" />, focusSearch, false],
               [syncLabel, <RefreshCw key="r" className={cn("h-4 w-4", busy && "animate-spin")} />, syncAll, busy || connected.length === 0],
@@ -133,6 +142,9 @@ export default function Layout() {
             ))}
           </div>)}
         <div className={cn("mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:w-[var(--sb)]", iconsOnly ? "md:hidden" : "md:block")}>
+          <button onClick={() => openUpload()} disabled={onUploadsPage} title={uploadLabel}
+            className="mb-2 flex h-10 w-full items-center gap-2.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">
+            <UploadCloud className="h-4 w-4" />Upload files</button>
           <GlobalSearch ref={desktopSearch} className="mb-2" />
           <button onClick={syncAll} disabled={busy || connected.length === 0} title={syncLabel}
             className="mb-2 flex h-10 w-full items-center gap-2.5 rounded-md border px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">

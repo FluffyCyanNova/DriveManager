@@ -15,10 +15,8 @@ import { accountColor } from "@/utils/accountColor";
 import { ago, bytes } from "@/utils/format";
 import { describe } from "./Activity";
 import { useMask } from "@/utils/privacy";
-import { useUploads } from "@/stores/uploads";
 
 export default function Dashboard() {
-  const openUpload = useUploads((s) => s.openDialog);
   const m = useMask();
   const accounts = useAccounts();
   const uploads = useQuery({ queryKey: ["uploads", "active"], queryFn: () => api.get<UploadJob[]>("/api/uploads?state=QUEUED,VALIDATING,ALLOCATING,UPLOADING,FINALIZING,FAILED&limit=20"), refetchInterval: 10_000 });
@@ -39,7 +37,7 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader title="Dashboard" description={<>{list.length} account{list.length > 1 ? "s" : ""} connected · {bytes(used)} stored in total. Each account has its own separate limit.</>}
-        actions={<Button onClick={() => openUpload({})}><UploadCloud className="h-4 w-4" />Upload files</Button>} />
+         />
       <StorageOverview accounts={list} trashCount={trash.data?.total} />
       <div className="grid gap-4 md:grid-cols-2">
         {list.map((a) => (
