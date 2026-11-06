@@ -173,3 +173,15 @@ def test_download_check_does_not_record_activity(authed, db, indexed, monkeypatc
     r = authed.get(f"/api/files/{indexed.id}/r1/download")
     assert r.status_code == 200 and r.content == b"hello"
     assert downloads() == 1
+
+
+def test_all_files_view_lists_every_file_at_any_depth_with_its_folder(authed, db, indexed):
+    # indexed: root.txt at the top, child.txt and photo.jpg inside "Projects", plus shared/drive/trashed items
+    r = authed.get("/api/files", params={"location": "my_drive", "all_files": "true", "sort": "name"}).json()
+    names = [i["name"] for i in r["items"]]
+    assert names == ["child.txt", "photo.jpg", "root.txt"]            # folders hidden, nested files included, no trash
+    by = {i["name"]: i for i in r["items"]}
+    assert by["child.txt"]["parent"] == {"id": "f1", "name": "Projects"}
+    assert by["root.txt"]["parent"] is None                            # top level of My Drive
+    shared = authed.get("/api/files", params={"location": "shared_with_me", "all_files": "true"}).json()
+    assert [i["name"] for i in shared["items"]] == ["inside.txt"]

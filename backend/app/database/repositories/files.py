@@ -38,6 +38,7 @@ class FileQuery:
     max_size: int | None = None
     trashed: bool = False
     folders_only: bool = False
+    all_files: bool = False              # every file at any depth in `location` (folders hidden), instead of one folder level
     sort: str = "name"
     direction: str = "asc"
     folders: str = "first"               # first | last | mixed: where folders go relative to files
@@ -62,6 +63,8 @@ def build(fq: FileQuery) -> Select:
     if fq.q:
         like = "%" + fq.q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         stmt = stmt.where(DriveFile.name.ilike(like, escape="\\"))
+    elif fq.all_files:
+        stmt = stmt.where(DriveFile.is_folder.is_(False))
     elif fq.parent_id:
         stmt = stmt.where(exists().where(DriveFileParent.file_id == DriveFile.id, DriveFileParent.parent_google_id == fq.parent_id))
     elif not fq.trashed and fq.location:
@@ -74,7 +77,7 @@ def build(fq: FileQuery) -> Select:
                 or_(P.parent_google_id == Account.root_folder_id,
                     exists().where(PF.account_id == DriveFile.account_id, PF.google_file_id == P.parent_google_id, PF.status == "ACTIVE")))
             stmt = stmt.where(DriveFile.location == "SHARED_WITH_ME", ~has_indexed_parent)
-    if fq.location and (fq.q or fq.trashed):
+    if fq.location and (fq.q or fq.trashed or fq.all_files):
         loc = {"my_drive": "MY_DRIVE", "shared_with_me": "SHARED_WITH_ME", "shared_drive": "SHARED_DRIVE"}.get(fq.location)
         if loc:
             stmt = stmt.where(DriveFile.location == loc)
@@ -121,3 +124,24 @@ def to_dict(f: DriveFile, email: str | None = None) -> dict:
                     "download": caps.get("canDownload", True), "add_children": caps.get("canAddChildren", f.is_folder),
                     "move": caps.get("canMoveItemWithinDrive", True), "untrash": caps.get("canUntrash", True),
                     "share": caps.get("canShare", True)}}
+
+
+def parents_for(db: Session, files: list[DriveFile]) -> dict[str, dict | None]:
+    """For the all-files view: the indexed folder each file sits in (first parent), or None at the top level."""
+    if not files:
+        return {}
+    links = db.execute(select(DriveFileParent.file_id, DriveFileParent.parent_google_id)
+                       .where(DriveFileParent.file_id.in_([f.id for f in files]))).all()
+    first: dict[str, str] = {}
+    for fid, pid in links:
+        first.setdefault(fid, pid)
+    acc_of = {f.id: f.account_id for f in files}
+    wanted = {(acc_of[fid], pid) for fid, pid in first.items()}
+    names = {(a, g): n for a, g, n in db.execute(select(DriveFile.account_id, DriveFile.google_file_id, DriveFile.name).where(
+        DriveFile.google_file_id.in_({g for _, g in wanted}), DriveFile.status == "ACTIVE", DriveFile.is_folder.is_(True)))}
+    out = {}
+    for f in files:
+        pid = first.get(f.id)
+        name = names.get((f.account_id, pid)) if pid else None
+        out[f.id] = {"id": pid, "name": name} if name else None
+    return out

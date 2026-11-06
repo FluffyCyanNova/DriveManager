@@ -67,7 +67,7 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | POST | `/api/files/{account_id}/{file_id}/restore` |
 | POST | `/api/files/{account_id}/{file_id}/trash` |
 
-`GET /api/files` query parameters: `account_id`, `location` (`my_drive` | `shared_with_me` | `shared_drive`), `parent_id`, `q` (name search), `type` (`folder`, `document`, `spreadsheet`, `presentation`, `pdf`, `image`, `video`, `audio`, `archive`, `other`), `modified_after`, `modified_before`, `min_size`, `max_size`, `trashed`, `folders_only`, `sort` (`name` | `modified` | `size` | `type` | `account`), `direction` (`asc` | `desc`), `folders` (`first` | `last` | `mixed`, default `first`: where folders go relative to files), `page`, `page_size` (max 500).
+`GET /api/files` query parameters: `account_id`, `location` (`my_drive` | `shared_with_me` | `shared_drive`), `parent_id`, `q` (name search), `type` (`folder`, `document`, `spreadsheet`, `presentation`, `pdf`, `image`, `video`, `audio`, `archive`, `other`), `modified_after`, `modified_before`, `min_size`, `max_size`, `trashed`, `folders_only`, `all_files` (every file at any depth in `location`, folders hidden; each item gets `parent: {id, name}` or `null` at the top level), `sort` (`name` | `modified` | `size` | `type` | `account`), `direction` (`asc` | `desc`), `folders` (`first` | `last` | `mixed`, default `first`: where folders go relative to files), `page`, `page_size` (max 500).
 
 `GET /api/files/{account_id}/{file_id}/download` streams the file (`?format=` picks the export format for Google Docs/Sheets/Slides) and records a *Downloaded* activity entry. With `?check=true` it only confirms the download can start and returns `{"ok": true, "filename": ...}` (or the usual error JSON). It sends no file data and records no activity. The web app calls it before starting the real download.
 
@@ -130,7 +130,7 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | GET | `/api/health/details` |
 
 ## Notable behaviours
-* `GET /api/files` parameters: `account_id`, `location` (`my_drive|shared_with_me|shared_drive`), `parent_id` (Google folder id or shared-drive id), `q` (name search, escapes wildcards), `type`, `modified_after/before`, `min_size/max_size`, `trashed`, `folders_only`, `sort` (`name|modified|size|type`), `direction`, `page`, `page_size` (max 500).
+* `GET /api/files` parameters: `account_id`, `location` (`my_drive|shared_with_me|shared_drive`), `parent_id` (Google folder id or shared-drive id), `q` (name search, escapes wildcards), `type`, `modified_after/before`, `min_size/max_size`, `trashed`, `folders_only`, `all_files`, `sort` (`name|modified|size|type|account`), `direction`, `page`, `page_size` (max 500).
 * `DELETE /api/files/{account}/{file}` moves to Google's trash. `?permanent=true` also requires `&confirm=true`.
 * `GET /api/files/{account}/{file}/download?format=pdf|docx|xlsx|pptx|txt|csv` (format only for Google-native docs).
 * `POST /api/uploads` is multipart: `file`, `mode` (`MANUAL|AUTO`), `account_id`, `folder_id`, `folder_name`.

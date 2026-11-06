@@ -10,7 +10,7 @@ export interface FileCaps { rename: boolean; trash: boolean; delete: boolean; do
 export interface DriveItem {
   id: string; account_id: string; account_email: string | null; google_file_id: string; name: string; mime_type: string; is_folder: boolean;
   size: number | null; modified_time: string | null; created_time: string | null; trashed: boolean; location: string; owner_email: string | null;
-  owned_by_me: boolean; web_view_link: string | null; drive_id: string | null; shortcut_target_id: string | null; can: FileCaps;
+  owned_by_me: boolean; web_view_link: string | null; drive_id: string | null; shortcut_target_id: string | null; parent?: { id: string; name: string } | null; can: FileCaps;
 }
 export interface FilePage { items: DriveItem[]; total: number; page: number; page_size: number }
 export interface SharedDrive { id: string; name: string; account_id: string; account_email: string }
