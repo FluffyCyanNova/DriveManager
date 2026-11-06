@@ -1,4 +1,4 @@
-import { AlertTriangle, Eye, EyeOff, FlaskConical, LogOut, Moon, RefreshCw, Search, Settings, Sun, UploadCloud } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Settings, Sun, UploadCloud } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch, useSearchShortcut } from "@/components/GlobalSearch";
 import { SIDEBAR_ICONS, SIDEBAR_MAX, SIDEBAR_MIN, SidebarNav, useSidebarWidth } from "@/components/SidebarNav";
@@ -104,14 +104,16 @@ export default function Layout() {
           }}
           className="absolute -right-1 top-0 z-30 hidden h-full w-2 cursor-col-resize touch-none outline-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 md:block" />
         <div className={cn("flex items-center gap-2.5 px-4 py-3.5 md:py-5", iconsOnly && "md:justify-center md:px-0")}>
-          <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
-            className="shrink-0 rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
-          {iconsOnly && m.fakeNames && <Link to="/settings#developer" title={demoTitle} aria-label={demoTitle} className="absolute left-1/2 top-[3.6rem] hidden -translate-x-1/2 rounded-full border border-amber-500/50 bg-amber-500/10 px-1 text-[9px] font-medium uppercase text-amber-700 dark:text-amber-300 md:block">Demo</Link>}
+          {/* While fake names are on, a small "Demo" tag sits on the logo's bottom edge, so the header layout never shifts. */}
+          <div className="relative shrink-0">
+            <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
+              className="block rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
+            {m.fakeNames && <Link to="/settings#developer" title={demoTitle} aria-label={demoTitle}
+              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-amber-400 px-1 text-[8px] font-bold uppercase leading-[12px] tracking-wide text-amber-950 shadow ring-2 ring-card hover:bg-amber-300">Demo</Link>}
+          </div>
           <div className={cn("flex min-w-0 flex-1 flex-col leading-tight md:flex-none", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
             <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
-              className="max-w-full truncate text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline md:w-fit">DriveManager</a>
-            {m.fakeNames && <Link to="/settings#developer" title={demoTitle} className="mt-0.5 flex w-fit items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"><FlaskConical className="h-3 w-3" />Demo</Link>}
-            <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
+              className="max-w-full truncate text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline md:w-fit">DriveManager</a>            <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
               className="max-w-full truncate text-[11px] text-muted-foreground hover:text-primary hover:underline md:w-fit">@FluffyCyanNova</a>
           </div>
           {/* Phones: the search replaces the title and buttons in the top bar instead of adding a full-width row. */}

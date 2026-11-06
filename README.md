@@ -44,7 +44,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 
 **Privacy and security**
 * **Privacy mode**: a sidebar switch that replaces every email address in the app with a stable alias (e.g. `user-k3f9x2`). Handy for screenshots and screen sharing. Display only: nothing changes on the server.
-* **Fake file and folder names** (Settings → Developer): shows every file, folder, shared drive and virtual folder name as a made-up name built from ordinary words (e.g. *Quarterly Garden Plan.pdf*). The same name always gets the same fake name, and the extension and icon stay. Display only and saved per browser: search still matches the real names, and sizes and storage are real. A **Demo** badge shows in the sidebar while it is on. Combine it with Privacy mode for recordings.
+* **Fake file and folder names** (Settings → Developer): shows every file, folder, shared drive and virtual folder name as a made-up name built from ordinary words (e.g. *Quarterly Garden Plan.pdf*). The same name always gets the same fake name, and the extension and icon stay. Display only and saved per browser: search still matches the real names, and sizes and storage are real. A small **Demo** tag shows on the sidebar logo while it is on. Combine it with Privacy mode for recordings.
 * Single local user with a hashed password, CSRF and origin checks, and Google refresh tokens encrypted at rest. Tokens are redacted from logs.
 * Activity history, plus backup and restore scripts.
 

@@ -169,7 +169,7 @@ function DeveloperCard() {
   const fake = usePrivacy((s) => s.fakeNames);
   const setFake = usePrivacy((s) => s.setFakeNames);
   const loc = useLocation();
-  // The sidebar's "Demo" badge links to /settings#developer.
+  // The "Demo" tag on the sidebar logo links to /settings#developer.
   useEffect(() => { if (loc.hash === "#developer") document.getElementById("developer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [loc.hash]);
   return (
     <Card id="developer" className="scroll-mt-6"><CardHeader><CardTitle>Developer</CardTitle><CardDescription>For screenshots, recordings and demos. Saved in this browser only.</CardDescription></CardHeader>
@@ -181,7 +181,7 @@ function DeveloperCard() {
               Every file, folder, shared drive and virtual folder name is shown as a made-up name built from ordinary words,
               for example “{fakeName("Tax return 2024.pdf")}”. The same real name always gets the same fake name, and the extension
               and icon stay. Display only: nothing is renamed, search still matches the real names, and sizes and storage are real.
-              Turn on Privacy mode as well to hide email addresses. A “Demo” badge shows in the sidebar while this is on.
+              Turn on Privacy mode as well to hide email addresses. A “Demo” tag shows on the sidebar logo while this is on.
             </span></span>
         </label>
         {fake && <p className="text-xs text-muted-foreground">The Rename dialog still shows the real name, so renaming doesn't save a fake name by mistake.</p>}
