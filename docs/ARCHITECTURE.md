@@ -62,8 +62,23 @@ Pure references `(account_id, google_file_id)` with a cached name. Deleting a vi
 
 An upload can name a virtual folder (`upload_jobs.virtual_folder_id`). The worker adds the file once the Google upload completes. If that virtual folder was deleted in the meantime, the upload still completes and the add is skipped.
 
+## Sharing
+*Share…* reads and changes the item's Drive permissions directly; nothing about sharing is stored locally. *Anyone with the link* is created with `allowFileDiscovery=false` (not searchable). People are added one address at a time, so one rejected address (for example no Google account while *Notify people* is off, or a Workspace policy that blocks outside sharing) is reported without stopping the rest. Changes are recorded in Activity (`share_link`, `share_add`, `share_role`, `share_remove`). *Copy link* copies the item's `webViewLink` and reports whether link sharing is on.
+
+## Moving a file to another account
+Nothing passes through this server. Steps:
+1. Check the target's latest quota snapshot; refuse up front if the file doesn't fit.
+2. **Transfer ownership** (when the source owns the file in My Drive). As the source: give the target writer access, then offer ownership (`pendingOwner`). As the target (also connected): accept (`role=owner`, `transferOwnership`). Then remove the file from the source's folders, add it to the target folder, and drop the source's leftover access. Same file ID and link.
+3. **Copy fallback** if Google refuses the transfer (400/403: other domain, Workspace policy, not owner, shared drive): the half-made offer is withdrawn. The target gets temporary read access and makes a server-side `files.copy` into its own Drive. The original goes to the source's Trash, and the temporary access is removed. New file ID.
+4. The local index and any virtual-folder references are updated to the moved file, both quotas are refreshed, and a `move_account` activity entry records the target and the method used.
+
+Folders, shortcuts and trashed items are refused for now.
+
 ## Deleting
 *Move to trash* is the default and is recoverable. *Delete permanently* (row menu or bulk bar, from anywhere, not only Trash) and *Empty trash* always need an explicit confirmation, and the API requires `confirm=true`. Permanently deleting a folder also removes its descendants from the local index, the same way Google does: items the account owns, or everything in a shared drive. Items owned by other people just lose that parent, and the next sync settles them.
+
+## Sidebar order
+The sidebar order is stored server-side in `app_settings` (`ui.sidebar_order`), so every browser and device shows the same order. Dashboard is pinned first and isn't part of it. The server normalises what it's sent: unknown or duplicate keys are dropped, and items added in a later version are appended at their default position. Reordering updates the UI immediately and rolls back if the save fails. `DELETE /api/settings/sidebar` restores the default.
 
 ## Hide emails (privacy mode)
 A switch in the sidebar replaces every email address shown in the UI with a stable alias such as `user-k3f9x2`. That includes chips, lists, charts, server messages and notifications. It also hides Google display names. The same address always gets the same alias, and account colours stay the same, so accounts remain easy to tell apart. It is **display only**, meant for screenshots and screen sharing: the API, the logs and the database still hold the real addresses. The setting is stored per browser.
@@ -84,5 +99,5 @@ A switch in the sidebar replaces every email address shown in the UI with a stab
 * **Downloads stream straight from Google** through the backend rather than being staged on disk first (no disk use, immediate start).
 * An uploaded file is written to disk twice on the server (multipart parser temp file, then the staging path). Simple and robust; it costs some extra I/O for very large files.
 * `changes.list` is used with one **account-level cursor** (which includes shared drives the account belongs to). The schema supports per-drive cursors if ever needed.
-* **Moving or copying between accounts** is not supported (Google has no such operation; it would require download + re-upload).
+* **Moving between accounts** works for single files by ownership transfer, with a server-side copy as the fallback (see above). Folders aren't supported yet: transferring a folder doesn't carry its contents, so it would have to be rebuilt item by item.
 * Google-native documents export through the Drive API, which limits exports to about 10 MB.

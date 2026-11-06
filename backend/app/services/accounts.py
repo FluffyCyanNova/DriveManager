@@ -25,6 +25,9 @@ _FRIENDLY = {
     "rateLimitExceeded": "Google is rate-limiting this account. Wait a moment and try again.",
     "cannotDownloadFile": "Google does not allow downloading this file.",
     "exportSizeLimitExceeded": "This Google document is too large to export (limit about 10 MB).",
+    "publishOutNotPermitted": "This account's organisation doesn't allow sharing outside it.",
+    "cannotShareTeamDriveTopFolderWithAnyoneOrDomains": "A shared drive's top folder can't be shared by link.",
+    "sharingRateLimitExceeded": "Google is limiting how fast this account can share. Try again later.",
 }
 
 

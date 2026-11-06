@@ -1,4 +1,4 @@
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Share2 } from "lucide-react";
 import { useState } from "react";
 import { create } from "zustand";
 import { download, FileIcon } from "@/components/FileBits";
@@ -23,7 +23,7 @@ const canOpen = (it: DriveItem) => !!it.web_view_link;
  * If the remembered action isn't possible for this file (e.g. downloading is blocked), it falls back to the other one,
  * and asks if neither works. `exportFile` opens the export-format dialog for Google Docs/Sheets/Slides.
  */
-export function useFileOpener(exportFile: (it: DriveItem) => void) {
+export function useFileOpener(exportFile: (it: DriveItem) => void, shareFile?: (it: DriveItem) => void) {
   const choice = useOpenChoice((s) => s.choice);
   const [asking, setAsking] = useState<DriveItem | null>(null);
   const run = (it: DriveItem, c: Choice) => {
@@ -36,11 +36,12 @@ export function useFileOpener(exportFile: (it: DriveItem) => void) {
     if (choice && options.length === 1) return run(it, options[0]);
     setAsking(it);
   };
-  const dialog = <FileOpenDialog item={asking} onClose={() => setAsking(null)} onChoose={(it, c) => { setAsking(null); run(it, c); }} />;
+  const dialog = <FileOpenDialog item={asking} onClose={() => setAsking(null)} onChoose={(it, c) => { setAsking(null); run(it, c); }}
+    onShare={shareFile ? (it) => { setAsking(null); shareFile(it); } : undefined} />;
   return { openFile, dialog };
 }
 
-function FileOpenDialog({ item, onClose, onChoose }: { item: DriveItem | null; onClose: () => void; onChoose: (it: DriveItem, c: Choice) => void }) {
+function FileOpenDialog({ item, onClose, onChoose, onShare }: { item: DriveItem | null; onClose: () => void; onChoose: (it: DriveItem, c: Choice) => void; onShare?: (it: DriveItem) => void }) {
   const remember = useOpenChoice((s) => s.remember);
   const [dontAsk, setDontAsk] = useState(false);
   const pick = (c: Choice) => { if (!item) return; if (dontAsk) remember(c); setDontAsk(false); onChoose(item, c); };
@@ -58,13 +59,22 @@ function FileOpenDialog({ item, onClose, onChoose }: { item: DriveItem | null; o
             <Button variant="outline" disabled={!canDownload(item)} onClick={() => pick("download")} autoFocus>
               <Download className="h-4 w-4" />Download</Button>
             <Button disabled={!canOpen(item)} onClick={() => pick("drive")}>
-              <ExternalLink className="h-4 w-4" />Open in Google Drive</Button>
+              <ExternalLink className="h-4 w-4" />Open in Drive</Button>
           </div>
           {!canDownload(item) && <p className="text-xs text-muted-foreground">{item.trashed ? "Restore the file to download it." : "Google doesn't allow downloading this file with this account."}</p>}
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input type="checkbox" checked={dontAsk} onChange={(e) => setDontAsk(e.target.checked)} />
-            Don't ask again until I reload the page
+          {/* Only Download / Open in Drive can be remembered; Share is a separate action below and never remembered. */}
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" className="mt-0.5" checked={dontAsk} onChange={(e) => setDontAsk(e.target.checked)} />
+            <span>Remember <b className="font-medium text-foreground">Download</b> or <b className="font-medium text-foreground">Open in Drive</b> until I reload the page.
+              Clicking a file then does that straight away.</span>
           </label>
+          {onShare && (
+            <div className="flex items-center justify-between gap-3 border-t pt-3 text-sm">
+              <span className="text-muted-foreground">Want to send it to someone?</span>
+              <Button size="sm" variant="ghost" disabled={!item.can.share}
+                title={item.can.share ? "Change who can open it, or copy its link" : "Google doesn't allow sharing this file with this account"}
+                onClick={() => onShare(item)}><Share2 className="h-3.5 w-3.5" />Share or copy link…</Button>
+            </div>)}
         </div>
       )}
     </Dialog>

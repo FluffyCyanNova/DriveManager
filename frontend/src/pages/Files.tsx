@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link2, Pencil, RotateCcw, Search, Trash2, Users } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AccountChip, ConfirmDialog, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
@@ -20,6 +20,8 @@ import { bytes, when } from "@/utils/format";
 import VirtualBrowser from "./VirtualBrowser";
 import { useMask } from "@/utils/privacy";
 import { useFileOpener } from "@/components/FileOpen";
+import { copyLink, ShareDialog } from "@/components/ShareDialog";
+import { MoveAccountDialog } from "@/components/MoveAccountDialog";
 
 type Loc = "my_drive" | "shared_with_me" | "shared_drive" | "trash";
 interface Crumb { accountId: string; id: string; name: string }
@@ -93,7 +95,10 @@ function DriveBrowser() {
   const [moving, setMoving] = useState<DriveItem | null>(null);
   const [deleting, setDeleting] = useState<DriveItem | null>(null);
   const [exporting, setExporting] = useState<DriveItem | null>(null);
-  const { openFile, dialog: openFileDialog } = useFileOpener(setExporting);
+  const [sharing, setSharing] = useState<DriveItem | null>(null);
+  const [movingAcross, setMovingAcross] = useState<DriveItem | null>(null);
+  const otherAccounts = (accounts.data ?? []).filter((a) => a.status === "ACTIVE").length > 1;
+  const { openFile, dialog: openFileDialog } = useFileOpener(setExporting, setSharing);
   const [addTo, setAddTo] = useState<DriveItem[] | null>(null);
   const [newFolder, setNewFolder] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState<DriveItem[] | null>(null);
@@ -191,8 +196,11 @@ function DriveBrowser() {
   const menu = (it: DriveItem) => [
     { label: "Open in Google Drive", icon: <ExternalLink className="h-4 w-4" />, hidden: !it.web_view_link, onSelect: () => window.open(it.web_view_link!, "_blank", "noopener") },
     { label: "Download", icon: <Download className="h-4 w-4" />, hidden: it.is_folder || !it.can.download, onSelect: () => download(it, () => setExporting(it)) },
+    { label: "Share…", icon: <Share2 className="h-4 w-4" />, hidden: it.trashed, onSelect: () => setSharing(it) },
+    { label: "Copy link", icon: <Link className="h-4 w-4" />, hidden: it.trashed || !it.web_view_link, onSelect: () => copyLink(it) },
     { label: "Rename", icon: <Pencil className="h-4 w-4" />, hidden: it.trashed || !it.can.rename, onSelect: () => setRenaming(it) },
     { label: "Move to…", icon: <FolderInput className="h-4 w-4" />, hidden: it.trashed || !it.can.move, onSelect: () => setMoving(it) },
+    { label: "Move to another account…", icon: <ArrowLeftRight className="h-4 w-4" />, hidden: it.trashed || it.is_folder || !!it.shortcut_target_id || !otherAccounts, onSelect: () => setMovingAcross(it) },
     { label: "Add to virtual folder", icon: <Link2 className="h-4 w-4" />, hidden: it.trashed, onSelect: () => setAddTo([it]) },
     { label: "Move to trash", icon: <Trash2 className="h-4 w-4" />, hidden: it.trashed || !it.can.trash, onSelect: () => trash.mutate(it) },
     { label: "Restore", icon: <RotateCcw className="h-4 w-4" />, hidden: !it.trashed || !it.can.untrash, onSelect: () => restore.mutate(it) },
@@ -296,6 +304,8 @@ function DriveBrowser() {
         Shared-drive trash and files owned by other people aren't affected.</ConfirmDialog>
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       {openFileDialog}
+      <ShareDialog item={sharing} onClose={() => setSharing(null)} />
+      <MoveAccountDialog item={movingAcross} onClose={() => setMovingAcross(null)} />
       <VirtualFolderPicker open={!!addTo} title="Add to virtual folder" confirmLabel="Add" folders={vtree.data ?? []} onClose={() => setAddTo(null)}
         onPick={(id) => addTo && addItems.mutate({ folderId: id, items: addTo })}
         onCreate={async (name) => { const f = await api.post<{ id: string }>("/api/virtual-folders", { name, parent_id: null }); qc.invalidateQueries({ queryKey: ["virtual-tree"] }); return f.id; }} />

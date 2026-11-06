@@ -1,5 +1,6 @@
-import { Activity, AlertTriangle, BarChart3, Eye, EyeOff, FolderTree, LayoutDashboard, Link2, LogOut, Moon, RefreshCw, Settings, Sun, Trash2, UploadCloud, Users } from "lucide-react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Sun } from "lucide-react";
+import { NavLink, Outlet } from "react-router-dom";
+import { SidebarNav } from "@/components/SidebarNav";
 import { Toaster } from "@/components/Toaster";
 import { useAccounts, useHealth } from "@/hooks/queries";
 import { useEvents } from "@/hooks/useEvents";
@@ -11,18 +12,6 @@ import { toast, useUI } from "@/stores/ui";
 import { cn } from "@/utils/cn";
 import { useMask, usePrivacy } from "@/utils/privacy";
 
-// Files has sub-entries that open the Files page on a specific view (?view=…); `view` decides which one is highlighted.
-const NAV: { to: string; label: string; icon: typeof FolderTree; end?: boolean; view?: string | null; sub?: boolean }[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/files", label: "Files", icon: FolderTree, view: null },
-  { to: "/files?view=trash", label: "Trash", icon: Trash2, view: "trash", sub: true },
-  { to: "/files?view=virtual", label: "Virtual folders", icon: Link2, view: "virtual", sub: true },
-  { to: "/uploads", label: "Uploads", icon: UploadCloud },
-  { to: "/accounts", label: "Accounts", icon: Users },
-  { to: "/activity", label: "Activity", icon: Activity },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 
 export default function Layout() {
   const m = useMask();
@@ -57,10 +46,6 @@ export default function Layout() {
       qc.invalidateQueries({ queryKey: ["accounts"] });
     }
   };
-  const location = useLocation();
-  const currentView = location.pathname === "/files" ? new URLSearchParams(location.search).get("view") : undefined;
-  const itemCls = (active: boolean, sub?: boolean) => cn("flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
-    sub && "md:ml-4 md:py-1.5", active && "bg-accent text-accent-foreground");
   const logout = async () => { try { await api.post("/api/auth/logout"); } finally { auth.set({ status: "out" }); } };
 
   return (
@@ -69,7 +54,8 @@ export default function Layout() {
         <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
           <img src="/favicon.svg" alt="" className="h-7 w-7" />
           <div className="flex min-w-0 flex-col leading-tight">
-            <span className="text-[15px] font-semibold tracking-tight">DriveManager</span>
+            <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
+              className="w-fit text-[15px] font-semibold tracking-tight hover:text-primary hover:underline">DriveManager</a>
             <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
               className="w-fit text-xs text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
           </div>
@@ -80,18 +66,7 @@ export default function Layout() {
             <button onClick={logout} className="rounded p-1.5 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
-        <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible md:pb-0">
-          {NAV.map(({ to, label, icon: Icon, end, view, sub }) => view !== undefined ? (
-            <Link key={to} to={to} aria-current={currentView !== undefined && (currentView ?? null) === view ? "page" : undefined}
-              className={itemCls(currentView !== undefined && (currentView ?? null) === view, sub)}>
-              <Icon className="h-4 w-4" />{label}
-            </Link>
-          ) : (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => itemCls(isActive)}>
-              <Icon className="h-4 w-4" />{label}
-            </NavLink>
-          ))}
-        </nav>
+        <SidebarNav />
         <div className="mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:block md:w-56">
           <button onClick={syncAll} disabled={busy || connected.length === 0} title={syncLabel}
             className="mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">

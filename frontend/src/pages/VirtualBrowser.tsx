@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, Link2Off, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, Link, Link2Off, Pencil, Share2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AccountChip, ConfirmDialog, EmptyState, onError, PromptDialog, Spinner } from "@/components/Common";
 import { download, ExportDialog, FileIcon, VirtualFolderPicker } from "@/components/FileBits";
@@ -13,6 +13,7 @@ import type { DriveItem, VFolder, VItem } from "@/types";
 import { cn } from "@/utils/cn";
 import { bytes, when } from "@/utils/format";
 import { useFileOpener } from "@/components/FileOpen";
+import { copyLink, ShareDialog } from "@/components/ShareDialog";
 
 type Dlg = { kind: "new"; parent: string | null } | { kind: "rename"; f: VFolder } | { kind: "delete"; f: VFolder } | null;
 
@@ -24,7 +25,8 @@ export default function VirtualBrowser() {
   const [dlg, setDlg] = useState<Dlg>(null);
   const [movingItem, setMovingItem] = useState<VItem | null>(null);
   const [exporting, setExporting] = useState<DriveItem | null>(null);
-  const { openFile, dialog: openFileDialog } = useFileOpener(setExporting);
+  const [sharing, setSharing] = useState<DriveItem | null>(null);
+  const { openFile, dialog: openFileDialog } = useFileOpener(setExporting, setSharing);
   const folders = tree.data ?? [];
   const current = folders.find((f) => f.id === selected) ?? null;
 
@@ -57,6 +59,8 @@ export default function VirtualBrowser() {
   const menu = (it: VItem) => it.file ? [
     { label: "Open in Google Drive", icon: <ExternalLink className="h-4 w-4" />, hidden: !it.file.web_view_link, onSelect: () => window.open(it.file!.web_view_link!, "_blank", "noopener") },
     { label: "Download", icon: <Download className="h-4 w-4" />, hidden: it.file.is_folder || it.status !== "ok", onSelect: () => download(it.file!, () => setExporting(it.file)) },
+    { label: "Share…", icon: <Share2 className="h-4 w-4" />, hidden: it.status !== "ok", onSelect: () => setSharing(it.file) },
+    { label: "Copy link", icon: <Link className="h-4 w-4" />, hidden: it.status !== "ok" || !it.file.web_view_link, onSelect: () => copyLink(it.file!) },
     { label: "Move to another virtual folder", icon: <FolderInput className="h-4 w-4" />, onSelect: () => setMovingItem(it) },
     { label: "Remove from this folder", icon: <Link2Off className="h-4 w-4" />, onSelect: () => removeItem.mutate(it) },
   ] : [{ label: "Remove from this folder", icon: <Link2Off className="h-4 w-4" />, onSelect: () => removeItem.mutate(it) }];
@@ -91,6 +95,7 @@ export default function VirtualBrowser() {
       <VirtualFolderPicker open={!!movingItem} title="Move to another virtual folder" confirmLabel="Move" folders={folders} excludeId={selected ?? undefined} onClose={() => setMovingItem(null)} onPick={(to) => movingItem && moveItem.mutate({ it: movingItem, to })} />
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       {openFileDialog}
+      <ShareDialog item={sharing} onClose={() => setSharing(null)} />
     </div>
   );
 }

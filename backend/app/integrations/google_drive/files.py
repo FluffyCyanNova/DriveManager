@@ -87,3 +87,59 @@ def find_by_job(c: DriveClient, job_id: str) -> dict | None:
                                         supportsAllDrives=True, pageSize=5, fields=f"files({FILE_FIELDS})"))
     files = r.get("files", [])
     return files[0] if files else None
+
+
+PERMISSION_FIELDS = "id,type,role,emailAddress,displayName,domain,allowFileDiscovery,pendingOwner"
+
+
+def list_permissions(c: DriveClient, file_id: str) -> list[dict]:
+    out, token = [], None
+    while True:
+        r = c.call(c.service().permissions().list(fileId=file_id, pageToken=token, supportsAllDrives=True,
+                                                  fields=f"nextPageToken,permissions({PERMISSION_FIELDS})"))
+        out += r.get("permissions", [])
+        token = r.get("nextPageToken")
+        if not token:
+            return out
+
+
+def create_permission(c: DriveClient, file_id: str, body: dict, notify: bool = False, message: str | None = None) -> dict:
+    kw = dict(fileId=file_id, body=body, supportsAllDrives=True, fields=PERMISSION_FIELDS)
+    if body.get("type") in ("user", "group"):
+        kw["sendNotificationEmail"] = notify          # Google only accepts this flag for people and groups
+        if notify and message:
+            kw["emailMessage"] = message
+    return c.call(c.service().permissions().create(**kw))
+
+
+def update_permission(c: DriveClient, file_id: str, permission_id: str, role: str, pending_owner: bool | None = None,
+                      transfer_ownership: bool = False) -> dict:
+    """pending_owner=True offers ownership (personal accounts); the recipient accepts with role="owner", transfer_ownership=True."""
+    body = {"role": role}
+    if pending_owner is not None:
+        body["pendingOwner"] = pending_owner
+    kw = dict(fileId=file_id, permissionId=permission_id, body=body, supportsAllDrives=True, fields=PERMISSION_FIELDS)
+    if transfer_ownership:
+        kw["transferOwnership"] = True
+    return c.call(c.service().permissions().update(**kw))
+
+
+def delete_permission(c: DriveClient, file_id: str, permission_id: str) -> None:
+    c.call(c.service().permissions().delete(fileId=file_id, permissionId=permission_id, supportsAllDrives=True))
+
+
+def update_parents(c: DriveClient, file_id: str, add: str | None = None, remove: list[str] | None = None) -> dict:
+    kw = dict(fileId=file_id, fields=FILE_FIELDS, supportsAllDrives=True)
+    if add:
+        kw["addParents"] = add
+    if remove:
+        kw["removeParents"] = ",".join(remove)
+    return c.call(c.service().files().update(**kw))
+
+
+def copy_file(c: DriveClient, file_id: str, name: str, parent_id: str | None) -> dict:
+    """Server-side copy into the acting account's Drive; the copy is owned by that account."""
+    body = {"name": name}
+    if parent_id:
+        body["parents"] = [parent_id]
+    return c.call(c.service().files().copy(fileId=file_id, body=body, fields=FILE_FIELDS, supportsAllDrives=True))

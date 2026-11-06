@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query
@@ -14,7 +15,7 @@ from app.core.exceptions import AppError
 from app.database.database import get_db
 from app.database.models import Account, Drive
 from app.database.repositories import files as frepo
-from app.services import file_ops
+from app.services import cross_account, file_ops, sharing
 
 router = APIRouter(prefix="/api", tags=["files"], dependencies=[Depends(require_auth)])
 
@@ -118,3 +119,59 @@ def download(account_id: str, file_id: str, format: str | None = Query(None, max
     if stream.size:
         headers["Content-Length"] = str(stream.size)
     return StreamingResponse(stream.iter(), media_type=stream.mime, headers=headers)
+
+
+# ---------------- sharing ----------------
+ShareRole = Literal["reader", "commenter", "writer"]
+
+
+class LinkBody(BaseModel):
+    role: ShareRole | None = None          # null = Restricted (only people added)
+
+
+class PeopleBody(BaseModel):
+    emails: list[str] = Field(min_length=1, max_length=50)
+    role: ShareRole = "reader"
+    notify: bool = False
+    message: str | None = Field(default=None, max_length=2000)
+
+
+class RoleBody(BaseModel):
+    role: ShareRole
+
+
+@router.get("/files/{account_id}/{file_id}/sharing")
+def get_sharing(account_id: str, file_id: str, db: Session = Depends(get_db)):
+    return sharing.get(db, account_id, file_id)
+
+
+@router.put("/files/{account_id}/{file_id}/sharing/link")
+def set_link_sharing(account_id: str, file_id: str, body: LinkBody, db: Session = Depends(get_db)):
+    return sharing.set_link(db, account_id, file_id, body.role)
+
+
+@router.post("/files/{account_id}/{file_id}/sharing/people")
+def add_people(account_id: str, file_id: str, body: PeopleBody, db: Session = Depends(get_db)):
+    return sharing.add_people(db, account_id, file_id, body.emails, body.role, body.notify, body.message)
+
+
+@router.patch("/files/{account_id}/{file_id}/sharing/people/{permission_id}")
+def update_person(account_id: str, file_id: str, permission_id: str, body: RoleBody, db: Session = Depends(get_db)):
+    return sharing.update_person(db, account_id, file_id, permission_id, body.role)
+
+
+@router.delete("/files/{account_id}/{file_id}/sharing/people/{permission_id}")
+def remove_person(account_id: str, file_id: str, permission_id: str, db: Session = Depends(get_db)):
+    return sharing.remove_person(db, account_id, file_id, permission_id)
+
+
+# ---------------- move to another account ----------------
+class MoveAccountBody(BaseModel):
+    target_account_id: str
+    target_folder_id: str | None = None     # null/"root" = the target account's My Drive
+
+
+@router.post("/files/{account_id}/{file_id}/move-to-account")
+def move_to_account(account_id: str, file_id: str, body: MoveAccountBody, db: Session = Depends(get_db)):
+    """Transfer ownership to the other account when Google allows it, otherwise copy server-side and trash the original."""
+    return cross_account.move(db, account_id, file_id, body.target_account_id, body.target_folder_id)

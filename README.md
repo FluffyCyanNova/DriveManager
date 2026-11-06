@@ -17,10 +17,12 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 * Browse and search **My Drive, Shared with me, Shared drives and Trash** across all accounts in one list.
 * Filter by account and file type. Sort by name, account, date or size, either from the menu or by **clicking a column header** (click again to flip). Choose **Folders first, Files first or Mixed**; the choice is remembered.
 * Resizable columns: drag the edge, or double-click to fit. The **⋮ actions** button stays pinned to the right however wide the columns get.
-* **Click a file's name** to choose **Download** or **Open in Google Drive**. Tick *Don't ask again until I reload the page* to skip the question for the rest of the session. This works in the Google Drive and Virtual folders tabs.
+* **Click a file's name** to choose **Download** or **Open in Drive**. Tick *Remember Download or Open in Drive until I reload the page* and later clicks do that straight away. **Share or copy link…** sits on its own line in the same prompt and is never remembered. This works in the Google Drive and Virtual folders tabs.
 * Rename, move, create folders, download (Google Docs/Sheets/Slides export to Office or PDF).
+* **Share…**: set *General access* to *Restricted* or *Anyone with the link* (Viewer, Commenter or Editor; never searchable), add **specific people** by email with a role and an optional notification email, and change or remove anyone's access. **Copy link** copies the Drive link and tells you who can open it.
+* **Move to another account…** without downloading anything. DriveManager first **transfers ownership** to the other connected account (same file and link; comments and sharing kept). If Google doesn't allow that, it **copies the file inside Google** and moves the original to the old account's Trash. Single files only for now.
 * **Move to trash**, restore, **Delete permanently** (from anywhere, with confirmation), and **Empty trash** per account or for all of them.
-* Quick links in the sidebar: **Files → Trash** and **Files → Virtual folders**.
+* **Customisable sidebar**: drag items to reorder them (or focus one and press **Alt + ↑/↓**). **Trash** and **Virtual folders** have their own entries. Dashboard stays pinned at the top. The order is saved on the server, so it's the same on every device; **Settings → Sidebar → Reset to default order** undoes it.
 * **Sync now** in the sidebar re-indexes every connected account at once, and shows progress while the syncs run. Accounts also sync on their own schedule.
 
 ![Files: one list across accounts with filters, sortable columns and per-account colours](docs/screenshots/files.png)
@@ -121,7 +123,7 @@ GitHub Actions runs on every pull request and every push to `main`. It runs the 
 Everything Google-facing is tested against fakes, so real Google API behaviour is only exercised when you run it. If something misbehaves, see [Logs](#logs) below.
 
 ## Known limitations
-No pause button for uploads (cancel, retry and auto-resume exist). No cross-account move or copy. Single user. Google-native exports are limited to ~10 MB by Google. The app must be opened at the registered redirect address (`http://localhost:8000`) to connect accounts.
+No pause button for uploads (cancel, retry and auto-resume exist). Folders can't be moved between accounts yet (single files can). Ownership transfer only works between personal Google accounts or inside one Workspace organisation; otherwise a move falls back to a copy with a new link. Single user. Google-native exports are limited to ~10 MB by Google. The app must be opened at the registered redirect address (`http://localhost:8000`) to connect accounts.
 
 ## License
 [MIT](LICENSE) © 2026 FluffyCyanNova. You may use, change and share it, including commercially, as long as the copyright notice stays with it. It comes with no warranty.

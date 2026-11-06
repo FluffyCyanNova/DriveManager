@@ -119,4 +119,5 @@ def to_dict(f: DriveFile, email: str | None = None) -> dict:
             "shortcut_target_id": f.shortcut_target_id,
             "can": {"rename": caps.get("canRename", True), "trash": caps.get("canTrash", True), "delete": caps.get("canDelete", False),
                     "download": caps.get("canDownload", True), "add_children": caps.get("canAddChildren", f.is_folder),
-                    "move": caps.get("canMoveItemWithinDrive", True), "untrash": caps.get("canUntrash", True)}}
+                    "move": caps.get("canMoveItemWithinDrive", True), "untrash": caps.get("canUntrash", True),
+                    "share": caps.get("canShare", True)}}
