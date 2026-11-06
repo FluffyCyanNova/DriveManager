@@ -10,13 +10,14 @@ import { when } from "@/utils/format";
 
 const LABELS: Record<string, string> = {
   upload: "Uploaded", upload_failed: "Upload failed", upload_cancelled: "Upload cancelled", rename: "Renamed", move: "Moved", trash: "Moved to trash",
-  restore: "Restored", delete_permanent: "Deleted permanently", create_folder: "Created folder", download: "Downloaded",
+  restore: "Restored", delete_permanent: "Deleted permanently", empty_trash: "Emptied trash", create_folder: "Created folder", download: "Downloaded",
   account_connected: "Account connected", account_reconnected: "Account reconnected", account_removed: "Account removed", account_needs_reauth: "Account needs reconnecting",
 };
 export function describe(e: ActivityItem): string {
   const base = LABELS[e.type] ?? e.type;
   const d = e.details as Record<string, string> | null;
   if (e.type === "rename" && d?.from) return `${base}: ${d.from} → ${d.to}`;
+  if (e.type === "empty_trash") return `${base} (${Number(d?.count ?? 0)} item${Number(d?.count) === 1 ? "" : "s"})`;
   if (e.type === "upload_failed" && d?.message) return `${base}: ${e.file_name ?? ""} (${d.message})`;
   return e.file_name ? `${base}: ${e.file_name}` : base;
 }
@@ -33,7 +34,7 @@ export default function Activity() {
     <>
       <PageHeader title="Activity" description="Everything DriveManager did for you: uploads, file changes, and account events."
         actions={<Select aria-label="Filter by type" value={type} onChange={(e) => setType(e.target.value)} className="w-52">
-          <option value="">All activity</option><option value="upload,upload_failed,upload_cancelled">Uploads</option><option value="rename,move,trash,restore,delete_permanent,create_folder">File changes</option>
+          <option value="">All activity</option><option value="upload,upload_failed,upload_cancelled">Uploads</option><option value="rename,move,trash,restore,delete_permanent,empty_trash,create_folder">File changes</option>
           <option value="download">Downloads</option><option value="account_connected,account_reconnected,account_removed,account_needs_reauth">Accounts</option></Select>} />
       <Card>
         {q.isLoading ? <Spinner /> : items.length === 0 ? <EmptyState title="Nothing here yet">Uploads, renames, moves and account changes will be listed here.</EmptyState> : (

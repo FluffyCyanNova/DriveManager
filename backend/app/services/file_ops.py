@@ -1,7 +1,9 @@
 """Live file operations. Google is the source of truth: call Drive first, then refresh the local index."""
 from __future__ import annotations
 
-from sqlalchemy import select
+import logging
+
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
@@ -10,6 +12,8 @@ from app.integrations.google_drive import files as gfiles
 from app.integrations.google_drive import transfer
 from app.integrations.google_drive.client import DriveClient
 from app.services import accounts, events, sync
+
+log = logging.getLogger(__name__)
 
 
 def _local(db: Session, acc: Account, google_file_id: str) -> DriveFile:
@@ -76,6 +80,30 @@ def delete_permanently(db: Session, account_id: str, file_id: str) -> None:
     db.commit()
     events.record_activity(db, "delete_permanent", account=acc, google_file_id=file_id, file_name=name)
     events.publish(db, "files.changed", {"account_id": acc.id})
+
+
+def empty_trash(db: Session, account_id: str) -> int:
+    """Empty one account's Google Drive trash. Returns how many indexed items were removed.
+
+    Google's emptyTrash only deletes trashed items the account owns in My Drive; shared-drive trash and
+    files owned by other people are left alone, so the local index is updated the same way.
+    """
+    acc = accounts.get_account(db, account_id)
+    where = [DriveFile.account_id == acc.id, DriveFile.status == "ACTIVE", DriveFile.trashed.is_(True),
+             DriveFile.drive_id.is_(None), DriveFile.owned_by_me.is_(True)]
+    count = len(db.scalars(select(DriveFile.id).where(*where)).all())
+    with accounts.drive_errors(db, acc):
+        gfiles.empty_trash(DriveClient(acc))
+    db.execute(update(DriveFile).where(*where).values(status="REMOVED"))
+    db.commit()
+    events.record_activity(db, "empty_trash", account=acc, details={"count": count})
+    events.publish(db, "files.changed", {"account_id": acc.id})
+    try:   # best effort: freed space shows up sooner (Google can still lag a few minutes)
+        from app.services import quota
+        quota.refresh(db, acc)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Quota refresh after emptying trash failed for %s: %s", acc.email, e)
+    return count
 
 
 def move(db: Session, account_id: str, file_id: str, destination_id: str) -> DriveFile:
