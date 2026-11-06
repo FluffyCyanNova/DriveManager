@@ -71,6 +71,8 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 
 `GET /api/files/{account_id}/{file_id}/download` streams the file (`?format=` picks the export format for Google Docs/Sheets/Slides) and records a *Downloaded* activity entry. With `?check=true` it only confirms the download can start and returns `{"ok": true, "filename": ...}` (or the usual error JSON). It sends no file data and records no activity. The web app calls it before starting the real download.
 
+**Sidebar order.** `GET /api/settings/sidebar` returns `{order, default, customized}`. `PUT` takes `{"order": [...]}` using the keys `files`, `trash`, `virtual`, `uploads`, `accounts`, `activity`, `analytics`, `settings` (unknown or duplicate keys are dropped, missing ones appended), and `DELETE` resets to the default. Dashboard is always first and isn't included.
+
 **Sharing.** `GET .../sharing` returns `{link, people, can_share, web_view_link, ...}`, where `link` is `null` (Restricted) or the role for *anyone with the link*. `PUT .../sharing/link` takes `{"role": "reader" | "commenter" | "writer" | null}`. `POST .../sharing/people` takes `{"emails": [...], "role", "notify", "message"}` and returns the new state plus `failed: [{email, message}]` for addresses Google rejected. `PATCH` changes one person's role and `DELETE` removes their access; the owner can't be removed.
 
 **Move to another account.** `POST .../move-to-account` takes `{"target_account_id", "target_folder_id"}` (`null` = the target's My Drive) and returns `{"method": "transfer" | "copy", "file": {...}}`. It returns `409 INSUFFICIENT_SPACE` if the file doesn't fit, and refuses folders, shortcuts, trashed items and the same account.
@@ -116,6 +118,9 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | GET | `/api/settings/allocation` |
 | PUT | `/api/settings/allocation` |
 | GET | `/api/settings/runtime` |
+| GET | `/api/settings/sidebar` |
+| PUT | `/api/settings/sidebar` |
+| DELETE | `/api/settings/sidebar` |
 
 ### health
 

@@ -7,6 +7,7 @@
 
 /* Palette: cool slate paper, deep lagoon blue. Account identity colours are generated per account (utils/accountColor). */
 :root {
+  color-scheme: light;
   --background: 210 22% 97%;
   --foreground: 213 30% 14%;
   --card: 0 0% 100%;
@@ -27,6 +28,7 @@
   --ring: 207 88% 40%;
 }
 .dark {
+  color-scheme: dark;   /* native controls (scrollbars, selects, date pickers) follow the theme */
   --background: 214 26% 8%;
   --foreground: 210 24% 93%;
   --card: 214 24% 11%;
@@ -48,6 +50,14 @@
 }
 
 * { border-color: hsl(var(--border)); }
+
+/* Thin, theme-coloured scrollbars everywhere (sidebar, tables, dialogs, page). */
+* { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.35); border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.55); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
 html, body, #root { height: 100%; }
 body { @apply bg-background text-foreground font-sans antialiased; font-feature-settings: "tnum"; }
 :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }

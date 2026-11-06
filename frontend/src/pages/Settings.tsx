@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, FolderOpen, Plus, Save, Trash2 } from "lucide-react
 import { useEffect, useState, type FormEvent } from "react";
 import { AccountChip, onError, PageHeader, Spinner } from "@/components/Common";
 import { FolderPicker } from "@/components/FolderPicker";
+import { rememberSidebar, type SidebarState, useSidebarOrder } from "@/components/SidebarNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +80,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        <SidebarCard />
         <PasswordCard />
 
         <Card><CardHeader><CardTitle>System</CardTitle><CardDescription>Read-only. These come from your <code>.env</code> file; change them there and run <code>docker compose up -d</code>.</CardDescription></CardHeader>
@@ -122,5 +124,23 @@ function PasswordCard() {
         <div className="space-y-1"><Label htmlFor="np">New password</Label><Input id="np" type="password" autoComplete="new-password" minLength={10} required value={next} onChange={(e) => setNext(e.target.value)} /></div>
         <div className="space-y-1"><Label htmlFor="np2">Repeat new password</Label><Input id="np2" type="password" autoComplete="new-password" minLength={10} required value={again} onChange={(e) => setAgain(e.target.value)} /></div>
         <div><Button type="submit" disabled={m.isPending}>Change password</Button></div></form></CardContent></Card>
+  );
+}
+
+function SidebarCard() {
+  const qc = useQueryClient();
+  const q = useSidebarOrder();
+  const reset = useMutation({
+    mutationFn: () => api.del<SidebarState>("/api/settings/sidebar"),
+    onSuccess: (st) => { qc.setQueryData(["sidebar"], st); rememberSidebar(st); toast.success("Sidebar order reset."); },
+    onError,
+  });
+  return (
+    <Card><CardHeader><CardTitle>Sidebar</CardTitle>
+      <CardDescription>Drag items in the sidebar to change their order, or focus one and press Alt + ↑/↓. Dashboard stays pinned at the top. The order is saved on the server, so it's the same on every device.</CardDescription></CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-3">
+        <Button variant="outline" disabled={!q.data?.customized || reset.isPending} onClick={() => reset.mutate()}>Reset to default order</Button>
+        <span className="text-sm text-muted-foreground">{q.data?.customized ? "Custom order in use." : "Using the default order."}</span>
+      </CardContent></Card>
   );
 }

@@ -77,6 +77,9 @@ Folders, shortcuts and trashed items are refused for now.
 ## Deleting
 *Move to trash* is the default and is recoverable. *Delete permanently* (row menu or bulk bar, from anywhere, not only Trash) and *Empty trash* always need an explicit confirmation, and the API requires `confirm=true`. Permanently deleting a folder also removes its descendants from the local index, the same way Google does: items the account owns, or everything in a shared drive. Items owned by other people just lose that parent, and the next sync settles them.
 
+## Sidebar order
+The sidebar order is stored server-side in `app_settings` (`ui.sidebar_order`), so every browser and device shows the same order. Dashboard is pinned first and isn't part of it. The server normalises what it's sent: unknown or duplicate keys are dropped, and items added in a later version are appended at their default position. Reordering updates the UI immediately and rolls back if the save fails. `DELETE /api/settings/sidebar` restores the default.
+
 ## Hide emails (privacy mode)
 A switch in the sidebar replaces every email address shown in the UI with a stable alias such as `user-k3f9x2`. That includes chips, lists, charts, server messages and notifications. It also hides Google display names. The same address always gets the same alias, and account colours stay the same, so accounts remain easy to tell apart. It is **display only**, meant for screenshots and screen sharing: the API, the logs and the database still hold the real addresses. The setting is stored per browser.
 

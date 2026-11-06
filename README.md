@@ -22,7 +22,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 * **Share…**: set *General access* to *Restricted* or *Anyone with the link* (Viewer, Commenter or Editor; never searchable), add **specific people** by email with a role and an optional notification email, and change or remove anyone's access. **Copy link** copies the Drive link and tells you who can open it.
 * **Move to another account…** without downloading anything. DriveManager first **transfers ownership** to the other connected account (same file and link; comments and sharing kept). If Google doesn't allow that, it **copies the file inside Google** and moves the original to the old account's Trash. Single files only for now.
 * **Move to trash**, restore, **Delete permanently** (from anywhere, with confirmation), and **Empty trash** per account or for all of them.
-* Quick links in the sidebar: **Files → Trash** and **Files → Virtual folders**.
+* **Customisable sidebar**: drag items to reorder them (or focus one and press **Alt + ↑/↓**). **Trash** and **Virtual folders** have their own entries. Dashboard stays pinned at the top. The order is saved on the server, so it's the same on every device; **Settings → Sidebar → Reset to default order** undoes it.
 * **Sync now** in the sidebar re-indexes every connected account at once, and shows progress while the syncs run. Accounts also sync on their own schedule.
 
 ![Files: one list across accounts with filters, sortable columns and per-account colours](docs/screenshots/files.png)
