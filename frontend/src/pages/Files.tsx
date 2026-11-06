@@ -350,7 +350,7 @@ function DriveBrowser() {
               <th className="w-10 px-4 py-2.5"><input type="checkbox" aria-label="Select all" checked={selected.length === items.length} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i.id)) : new Set())} /></th>
               {head("name", "Name")}{head("account", "Account", "hidden md:table-cell")}{head("modified", "Modified", "hidden sm:table-cell")}{head("size", "Size", "text-right")}<th /><th className={STICKY_TH} aria-label="Actions" /></tr></thead>
             <tbody className="divide-y">{items.map((it) => (
-              <tr key={it.id} className={cn("group hover:bg-muted/40", sel.has(it.id) && "bg-accent/50", ctxRow === it.id && "bg-muted/60 outline outline-1 -outline-offset-1 outline-primary/50")}
+              <tr key={it.id} className={cn("group", sel.has(it.id) ? "bg-accent/50 hover:bg-accent/50 hover:shadow-[inset_0_0_0_9999px_rgb(0_0_0/0.18)]" : "hover:bg-muted/40", ctxRow === it.id && "bg-muted/60 outline outline-1 -outline-offset-1 outline-primary/50")}
                 onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); /* no text highlighting on shift-click */ }}
                 onClick={(e) => {
                   if (!e.shiftKey || (e.target as HTMLElement).closest("button, a, input, select, label")) return;
@@ -369,7 +369,7 @@ function DriveBrowser() {
                 <td data-col="modified" className="hidden px-2 py-2 text-muted-foreground sm:table-cell"><span className="block truncate">{when(it.modified_time)}</span></td>
                 <td data-col="size" className="px-2 py-2 text-right text-muted-foreground"><span className="block truncate">{it.is_folder ? "—" : bytes(it.size)}</span></td>
                 <td />
-                <td className={cn(STICKY_TD, sel.has(it.id) && "before:bg-accent/50")}><div className="relative"><RowMenu items={menu(it)} label={`Actions for ${it.name}`} /></div></td></tr>))}</tbody></table></div>)}
+                <td className={cn(STICKY_TD, sel.has(it.id) && "before:bg-accent/50 group-hover:before:bg-accent/50 group-hover:shadow-[inset_0_0_0_9999px_rgb(0_0_0/0.18),-6px_0_6px_-6px_rgb(0_0_0/0.35)]")}><div className="relative"><RowMenu items={menu(it)} label={`Actions for ${it.name}`} /></div></td></tr>))}</tbody></table></div>)}
         {!sharedRoot && total > 100 && (
           <div className="flex items-center justify-between border-t px-4 py-2.5 text-sm"><span className="text-muted-foreground">{total.toLocaleString()} items</span>
             <div className="flex items-center gap-2"><Button size="icon" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></Button><span>Page {page} of {pages}</span><Button size="icon" variant="outline" disabled={page >= pages} onClick={() => setPage(page + 1)} aria-label="Next page"><ChevronRight className="h-4 w-4" /></Button></div></div>)}
