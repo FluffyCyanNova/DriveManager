@@ -111,7 +111,8 @@ export function SidebarNav() {
     <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible md:pb-0">
       {/* Pinned: always first, outlined so it reads as fixed. */}
       <Link to="/" aria-current={current === "dashboard" ? "page" : undefined} title="Pinned to the top"
-        className={cn(itemCls(current === "dashboard"), "border border-black/40 md:mb-1")}>
+        className={cn(itemCls(current === "dashboard"), "sticky left-0 z-10 border border-black/40 bg-card md:static md:mb-1",
+          current === "dashboard" && "bg-accent")}>
         <D className="h-4 w-4" /><span className="flex-1">{DASHBOARD.label}</span><Pin className="hidden h-3 w-3 opacity-50 md:block" />
       </Link>
       {order.map((key) => {
