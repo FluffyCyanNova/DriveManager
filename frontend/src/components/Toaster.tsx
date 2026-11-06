@@ -7,7 +7,7 @@ export function Toaster() {
   const m = useMask();
   const { toasts, dismiss } = useUI();
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex w-[min(24rem,92vw)] flex-col gap-2" aria-live="polite">
+    <div className="fixed right-4 z-[60] flex w-[min(24rem,92vw)] flex-col gap-2" style={{ bottom: "calc(var(--upload-panel-h, 0px) + 1rem)" }} aria-live="polite">
       {toasts.map((t) => (
         <div key={t.id} role={t.kind === "error" ? "alert" : "status"} className={cn("flex items-start gap-2.5 rounded-md border bg-card p-3 text-sm shadow-lg", t.kind === "error" && "border-destructive/50")}>
           {t.kind === "error" ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /> : t.kind === "success" ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" /> : <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}

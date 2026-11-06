@@ -51,7 +51,7 @@ def create_upload(request: Request, file: UploadFile = File(...), mode: str = Fo
     except Exception:
         shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         raise
-    return uploads.to_dict(job)
+    return uploads.to_dict(job, db)
 
 
 @router.get("")
@@ -59,7 +59,7 @@ def list_jobs(state: str | None = None, limit: int = 100, db: Session = Depends(
     q = select(UploadJob).order_by(UploadJob.created_at.desc()).limit(min(max(limit, 1), 500))
     if state:
         q = q.where(UploadJob.state.in_(state.split(",")))
-    return [uploads.to_dict(j) for j in db.scalars(q)]
+    return [uploads.to_dict(j, db) for j in db.scalars(q)]
 
 
 def _job(db: Session, job_id: str) -> UploadJob:
@@ -71,18 +71,18 @@ def _job(db: Session, job_id: str) -> UploadJob:
 
 @router.get("/{job_id}")
 def get_job(job_id: str, db: Session = Depends(get_db)):
-    return uploads.to_dict(_job(db, job_id))
+    return uploads.to_dict(_job(db, job_id), db)
 
 
 @router.post("/{job_id}/cancel")
 def cancel(job_id: str, db: Session = Depends(get_db)):
-    return uploads.to_dict(uploads.cancel(db, _job(db, job_id)))
+    return uploads.to_dict(uploads.cancel(db, _job(db, job_id)), db)
 
 
 @router.post("/{job_id}/retry")
 def retry(job_id: str, body: RetryBody | None = None, db: Session = Depends(get_db)):
     b = body or RetryBody()
-    return uploads.to_dict(uploads.retry(db, _job(db, job_id), b.account_id, b.folder_id, b.folder_name))
+    return uploads.to_dict(uploads.retry(db, _job(db, job_id), b.account_id, b.folder_id, b.folder_name), db)
 
 
 @router.delete("/{job_id}")

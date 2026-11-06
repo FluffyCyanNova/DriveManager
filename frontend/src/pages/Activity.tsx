@@ -15,10 +15,11 @@ const LABELS: Record<string, string> = {
   share_link: "Link sharing", share_add: "Shared", share_role: "Changed access", share_remove: "Removed access", move_account: "Moved to another account",
   account_connected: "Account connected", account_reconnected: "Account reconnected", account_removed: "Account removed", account_needs_reauth: "Account needs reconnecting",
 };
-export function describe(e: ActivityItem): string {
+export function describe(e0: ActivityItem, fake: (n: string) => string = (n) => n): string {
+  const e = e0.file_name ? { ...e0, file_name: fake(e0.file_name) } : e0;
   const base = LABELS[e.type] ?? e.type;
   const d = e.details as Record<string, string> | null;
-  if (e.type === "rename" && d?.from) return `${base}: ${d.from} → ${d.to}`;
+  if (e.type === "rename" && d?.from) return `${base}: ${fake(d.from)} → ${fake(d.to)}`;
   if (e.type === "empty_trash") return `${base} (${Number(d?.count ?? 0)} item${Number(d?.count) === 1 ? "" : "s"})`;
   const ROLE: Record<string, string> = { reader: "view", commenter: "comment", writer: "edit" };
   if (e.type === "share_link") return `${d?.role ? `Anyone with the link can ${ROLE[d.role] ?? d.role}` : "Link sharing turned off"}: ${e.file_name ?? ""}`;
@@ -47,7 +48,7 @@ export default function Activity() {
         {q.isLoading ? <Spinner /> : items.length === 0 ? <EmptyState title="Nothing here yet">Uploads, renames, moves and account changes will be listed here.</EmptyState> : (
           <ul className="divide-y">{items.map((e) => (
             <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
-              <div className="min-w-0"><p className="truncate">{m.text(describe(e))}</p>{e.account_id !== undefined && <AccountChip id={e.account_id ?? "x"} email={e.account_email} />}</div>
+              <div className="min-w-0"><p className="truncate">{m.text(describe(e, m.file))}</p>{e.account_id !== undefined && <AccountChip id={e.account_id ?? "x"} email={e.account_email} />}</div>
               <time className="text-xs text-muted-foreground" dateTime={e.created_at}>{when(e.created_at)}</time>
             </li>))}</ul>)}
         {q.hasNextPage && <div className="border-t p-3 text-center"><Button variant="outline" size="sm" onClick={() => q.fetchNextPage()} disabled={q.isFetchingNextPage}>Load older</Button></div>}

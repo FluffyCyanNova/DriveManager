@@ -55,7 +55,7 @@ export function MoveAccountDialog({ item, onClose }: { item: DriveItem | null; o
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm">
             <FileIcon mime={item.mime_type} />
-            <span className="min-w-0 flex-1 truncate font-medium" title={item.name}>{item.name}</span>
+            <span className="min-w-0 flex-1 truncate font-medium" title={m.file(item.name)}>{m.file(item.name)}</span>
             {item.size != null && <span className="shrink-0 text-muted-foreground">{bytes(item.size)}</span>}
           </div>
           {targets.length === 0 ? <p className="text-sm text-muted-foreground">Connect another account first. There's no other connected account to move it to.</p> : (
@@ -68,7 +68,7 @@ export function MoveAccountDialog({ item, onClose }: { item: DriveItem | null; o
                     {targets.map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}{a.quota?.free != null ? ` — ${bytes(a.quota.free)} free` : ""}</option>)}</Select></div>
               </div>
               <div className="space-y-1.5"><Label>Folder</Label>
-                <Button variant="outline" className="w-full justify-start" onClick={() => setPicking(true)}><FolderOpen className="h-4 w-4" /><span className="truncate">{folder?.name ?? "My Drive (root)"}</span></Button></div>
+                <Button variant="outline" className="w-full justify-start" onClick={() => setPicking(true)}><FolderOpen className="h-4 w-4" /><span className="truncate">{m.file(folder?.name) ?? "My Drive (root)"}</span></Button></div>
               <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
                 <li>First it tries to <b>transfer ownership</b>: same file, same link, comments and sharing kept.</li>
                 <li>If Google doesn't allow that (e.g. work accounts or files you don't own), it <b>copies</b> the file and moves the original to the old account's <b>Trash</b>. The link changes.</li>

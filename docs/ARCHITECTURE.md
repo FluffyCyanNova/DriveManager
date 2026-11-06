@@ -38,6 +38,8 @@ worker claims job (atomic UPDATE QUEUED→VALIDATING)
               refresh quota, delete staged copy
   COMPLETED | FAILED (retryable) | CANCELLED
 ```
+**Where Automatic puts a file:** the first matching routing rule decides the account (and its folder, if the rule has one). Otherwise the first account in priority order with room is used, with its default folder from Settings, or My Drive. The reason is stored in `allocation_reason`, and the destination's full path (`destination_path`) is worked out from the local index for display.
+
 Safety properties (each covered by tests in `backend/tests/test_upload_runner.py`):
 
 | Situation | Behaviour |
@@ -75,16 +77,19 @@ Nothing passes through this server. Steps:
 Folders, shortcuts and trashed items are refused for now.
 
 ## Deleting
-*Move to trash* is the default and is recoverable. *Delete permanently* (row menu or bulk bar, from anywhere, not only Trash) and *Empty trash* always need an explicit confirmation, and the API requires `confirm=true`. Permanently deleting a folder also removes its descendants from the local index, the same way Google does: items the account owns, or everything in a shared drive. Items owned by other people just lose that parent, and the next sync settles them.
+*Move to trash* is the default and is recoverable. *Delete permanently* (row menu, right-click or bulk bar, from anywhere, not only Trash) and *Empty trash* always need **two confirmations**. The first explains what will happen and, for items not yet in the trash, offers *Move to trash instead*. The second ("Are you sure?") lists every item that will be deleted, with sizes, and its button only unlocks after a 3-second countdown. The API also requires `confirm=true`. Permanently deleting a folder also removes its descendants from the local index, the same way Google does: items the account owns, or everything in a shared drive. Items owned by other people just lose that parent, and the next sync settles them.
 
 ## Sidebar order and pins
-Stored server-side in `app_settings` (`ui.sidebar`) as `{order, pinned}`, so every browser and device shows the same sidebar. Pinned items are drawn first, in pin order, and can't be dragged. The rest follow `order`. Dashboard is pinned by default but can be unpinned. The server normalises what it's sent: unknown or duplicate keys are dropped, and items added in a later version are appended. The older `ui.sidebar_order` list, from before pins existed, is still read. Changes update the UI immediately and roll back if the save fails. `DELETE /api/settings/sidebar` restores the default order and pins.
+Stored server-side in `app_settings` (`ui.sidebar`) as `{order, pinned}`, so every browser and device shows the same sidebar. Pinned items are drawn first, in pin order, and can't be dragged. The rest follow `order`. Dashboard is pinned by default but can be unpinned. The server normalises what it's sent: unknown or duplicate keys are dropped, and items added in a later version are appended. The older `ui.sidebar_order` list, from before pins existed, is still read. Settings is not in the list: it is a fixed gear icon between the theme switch and Sign out, and a `settings` key saved by an older version is dropped. Changes update the UI immediately and roll back if the save fails. `DELETE /api/settings/sidebar` restores the default order and pins.
 
 ## Global search
 The sidebar search box writes its text to the Files page's URL (`/files?q=…`), so the sidebar box and the Files search box always show the same text, and a search can be bookmarked. A sidebar search clears the account filter and searches every location except Trash.
 
-## Hide emails (privacy mode)
+## Privacy mode (hides emails)
 A switch in the sidebar replaces every email address shown in the UI with a stable alias such as `user-k3f9x2`. That includes chips, lists, charts, server messages and notifications. It also hides Google display names. The same address always gets the same alias, and account colours stay the same, so accounts remain easy to tell apart. It is **display only**, meant for screenshots and screen sharing: the API, the logs and the database still hold the real addresses. The setting is stored per browser.
+
+## Fake file and folder names (Settings → Developer)
+A developer option for demos and recordings, only switched on from Settings → Developer (no sidebar shortcut). Every file, folder, shared drive and virtual folder name in the UI is replaced by a name built from two or three ordinary words (and sometimes a year), picked by an FNV-1a hash of the real name, so the same name always maps to the same fake one. The extension is kept, so icons and types still match. It is applied when rendering (`useMask().file()` / `.path()` in `src/utils/privacy.ts`), so it is **display only**: the API, search, sorting and the database use the real names, sizes and storage numbers are real, and the Rename dialog shows the real name so a fake one is never saved. Stored per browser (`dm-fake-names`); a small **Demo** tag on the sidebar logo shows while it is on. Toasts and server error messages that quote a file name may still show the real name.
 
 ## Security model
 * Single local user. Password stored as an Argon2id hash (in `.env`; changes made in the app are stored in the DB and take precedence). Constant-time compare, equalised timing for wrong usernames, 5 failures per 15 minutes per IP.

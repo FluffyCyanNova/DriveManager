@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import type { DriveItem } from "@/types";
 import { bytes } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 type Choice = "download" | "drive";
 
@@ -43,6 +44,7 @@ export function useFileOpener(exportFile: (it: DriveItem) => void, shareFile?: (
 
 function FileOpenDialog({ item, onClose, onChoose, onShare }: { item: DriveItem | null; onClose: () => void; onChoose: (it: DriveItem, c: Choice) => void; onShare?: (it: DriveItem) => void }) {
   const remember = useOpenChoice((s) => s.remember);
+  const m = useMask();
   const [dontAsk, setDontAsk] = useState(false);
   const pick = (c: Choice) => { if (!item) return; if (dontAsk) remember(c); setDontAsk(false); onChoose(item, c); };
   return (
@@ -52,7 +54,7 @@ function FileOpenDialog({ item, onClose, onChoose, onShare }: { item: DriveItem 
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm">
             <FileIcon mime={item.mime_type} />
-            <span className="min-w-0 flex-1 truncate font-medium" title={item.name}>{item.name}</span>
+            <span className="min-w-0 flex-1 truncate font-medium" title={m.file(item.name)}>{m.file(item.name)}</span>
             {item.size != null && <span className="shrink-0 text-muted-foreground">{bytes(item.size)}</span>}
           </div>
           <div className="grid gap-2 sm:grid-cols-2">

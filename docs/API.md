@@ -71,7 +71,9 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 
 `GET /api/files/{account_id}/{file_id}/download` streams the file (`?format=` picks the export format for Google Docs/Sheets/Slides) and records a *Downloaded* activity entry. With `?check=true` it only confirms the download can start and returns `{"ok": true, "filename": ...}` (or the usual error JSON). It sends no file data and records no activity. The web app calls it before starting the real download.
 
-**Sidebar order and pins.** `GET /api/settings/sidebar` returns `{order, pinned, default, default_pinned, customized}`. `PUT` takes `{"order": [...], "pinned": [...]}` using the keys `dashboard`, `files`, `trash`, `virtual`, `uploads`, `accounts`, `activity`, `analytics`, `settings` (unknown or duplicate keys are dropped, missing ones appended to `order`), and `DELETE` resets both. Pinned items are shown first, in `pinned` order.
+`GET /api/settings/runtime` includes `commit` and `build_date` (set when the Docker image is built by `scripts\start.ps1` / `update.ps1`; `null` otherwise).
+
+**Sidebar order and pins.** `GET /api/settings/sidebar` returns `{order, pinned, default, default_pinned, customized}`. `PUT` takes `{"order": [...], "pinned": [...]}` using the keys `dashboard`, `uploads`, `files`, `trash`, `accounts`, `virtual`, `activity`, `analytics` (that's also the default order; `settings` from older versions is dropped, since Settings is now a fixed icon) (unknown or duplicate keys are dropped, missing ones appended to `order`), and `DELETE` resets both. Pinned items are shown first, in `pinned` order.
 
 **Sharing.** `GET .../sharing` returns `{link, people, can_share, web_view_link, ...}`, where `link` is `null` (Restricted) or the role for *anyone with the link*. `PUT .../sharing/link` takes `{"role": "reader" | "commenter" | "writer" | null}`. `POST .../sharing/people` takes `{"emails": [...], "role", "notify", "message"}` and returns the new state plus `failed: [{email, message}]` for addresses Google rejected. `PATCH` changes one person's role and `DELETE` removes their access; the owner can't be removed.
 
@@ -89,6 +91,8 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | GET | `/api/uploads/{job_id}` |
 | POST | `/api/uploads/{job_id}/cancel` |
 | POST | `/api/uploads/{job_id}/retry` |
+
+Upload jobs include `destination_path` (e.g. `"My Drive / Work / Projects"`, or a shared drive's name first) once the account is known; it's `null` while Automatic hasn't chosen yet. `allocation_reason` explains Automatic's choice.
 
 `POST /api/uploads` is `multipart/form-data`: `file`, `mode` (`MANUAL` | `AUTO`), `account_id` (required for MANUAL), optional `folder_id` / `folder_name` (Drive destination), and optional `virtual_folder_id` (adds the finished file to that virtual folder; 404 `FOLDER_NOT_FOUND` if it doesn't exist).
 

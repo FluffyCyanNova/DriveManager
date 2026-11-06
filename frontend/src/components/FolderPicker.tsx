@@ -6,6 +6,7 @@ import { Spinner } from "@/components/Common";
 import { api } from "@/services/api";
 import type { FilePage, SharedDrive } from "@/types";
 import { cn } from "@/utils/cn";
+import { useMask } from "@/utils/privacy";
 
 export interface PickedFolder { id: string | null; name: string }
 interface Crumb { id: string | null; name: string }
@@ -16,6 +17,7 @@ export function FolderPicker({ accountId, onPick, onCancel, label = "Select this
 }) {
   const [space, setSpace] = useState<"my" | "shared">("my");
   const [stack, setStack] = useState<Crumb[]>([]);
+  const m = useMask();
   const current = stack[stack.length - 1];
 
   const drives = useQuery({ queryKey: ["drives", accountId], queryFn: () => api.get<SharedDrive[]>(`/api/drives/${accountId}`), enabled: space === "shared" && stack.length === 0 });
@@ -49,7 +51,7 @@ export function FolderPicker({ accountId, onPick, onCancel, label = "Select this
         <button className="rounded px-1 hover:bg-accent" onClick={() => setStack([])}>{space === "my" ? "My Drive" : "Shared drives"}</button>
         {stack.map((c, i) => (
           <span key={`${c.id}-${i}`} className="flex items-center gap-1"><ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <button className="rounded px-1 hover:bg-accent" onClick={() => setStack(stack.slice(0, i + 1))}>{c.name}</button></span>
+            <button className="rounded px-1 hover:bg-accent" onClick={() => setStack(stack.slice(0, i + 1))}>{m.file(c.name)}</button></span>
         ))}
       </nav>
       <div className="h-56 overflow-y-auto rounded-md border">
@@ -57,7 +59,7 @@ export function FolderPicker({ accountId, onPick, onCancel, label = "Select this
           <ul>{rows.map((r) => (
             <li key={r.id}>
               <button onClick={() => setStack([...stack, { id: r.id, name: r.name }])} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent", !r.canAdd && "opacity-60")}>
-                <Folder className="h-4 w-4 shrink-0 text-primary" /><span className="truncate">{r.name}</span>{!r.canAdd && <span className="ml-auto text-xs text-muted-foreground">read-only</span>}
+                <Folder className="h-4 w-4 shrink-0 text-primary" /><span className="truncate">{m.file(r.name)}</span>{!r.canAdd && <span className="ml-auto text-xs text-muted-foreground">read-only</span>}
               </button>
             </li>))}
           </ul>

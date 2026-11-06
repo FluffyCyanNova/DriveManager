@@ -12,5 +12,8 @@ RUN useradd --uid 10001 --create-home appuser \
  && chown -R appuser:appuser /data /staging /logs /backups /secrets /app \
  && sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 USER appuser
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=
+ENV APP_COMMIT=$GIT_COMMIT APP_BUILD_DATE=$BUILD_DATE
 EXPOSE 8000
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

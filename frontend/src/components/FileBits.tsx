@@ -7,6 +7,7 @@ import { ApiError, api, downloadUrl } from "@/services/api";
 import { toast } from "@/stores/ui";
 import type { VFolder } from "@/types";
 import { isGoogleNative } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 export function FileIcon({ mime, className = "h-4 w-4" }: { mime: string; className?: string }) {
   const c = `${className} shrink-0`;
@@ -50,9 +51,9 @@ export function ExportDialog({ item, onClose }: { item: { account_id: string; go
 export const download = (it: { account_id: string; google_file_id: string; mime_type: string }, ask: () => void) =>
   isGoogleNative(it.mime_type) ? ask() : startDownload(it.account_id, it.google_file_id);
 
-export function flattenFolders(list: VFolder[]): { id: string; label: string }[] {
+export function flattenFolders(list: VFolder[], fake: (n: string) => string = (n) => n): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];
-  const walk = (parent: string | null, prefix: string) => list.filter((f) => f.parent_id === parent).sort((a, b) => a.name.localeCompare(b.name)).forEach((f) => { out.push({ id: f.id, label: prefix + f.name }); walk(f.id, `${prefix}${f.name} / `); });
+  const walk = (parent: string | null, prefix: string) => list.filter((f) => f.parent_id === parent).sort((a, b) => a.name.localeCompare(b.name)).forEach((f) => { out.push({ id: f.id, label: prefix + fake(f.name) }); walk(f.id, `${prefix}${fake(f.name)} / `); });
   walk(null, "");
   return out;
 }
@@ -60,7 +61,8 @@ export function flattenFolders(list: VFolder[]): { id: string; label: string }[]
 export function VirtualFolderPicker({ open, folders, title, confirmLabel, onClose, onPick, onCreate, excludeId }: {
   open: boolean; folders: VFolder[]; title: string; confirmLabel: string; onClose: () => void; onPick: (folderId: string) => void; onCreate?: (name: string) => Promise<string>; excludeId?: string;
 }) {
-  const flat = flattenFolders(folders).filter((f) => f.id !== excludeId);
+  const m = useMask();
+  const flat = flattenFolders(folders, m.file).filter((f) => f.id !== excludeId);
   const [sel, setSel] = useState("");
   const [name, setName] = useState("");
   const value = sel || flat[0]?.id || "";

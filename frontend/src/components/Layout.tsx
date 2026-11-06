@@ -1,5 +1,5 @@
-import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Sun } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Settings, Sun, UploadCloud } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch, useSearchShortcut } from "@/components/GlobalSearch";
 import { SIDEBAR_ICONS, SIDEBAR_MAX, SIDEBAR_MIN, SidebarNav, useSidebarWidth } from "@/components/SidebarNav";
 import { Toaster } from "@/components/Toaster";
@@ -10,8 +10,12 @@ import { useCallback, useRef, useState } from "react";
 import { api } from "@/services/api";
 import { useAuth } from "@/stores/auth";
 import { toast, useUI } from "@/stores/ui";
+import { useUploads } from "@/stores/uploads";
 import { cn } from "@/utils/cn";
 import { useMask, usePrivacy } from "@/utils/privacy";
+import { DropOverlay } from "@/components/DropOverlay";
+import { UploadDialog } from "@/components/UploadForm";
+import { UploadPanel } from "@/components/UploadPanel";
 
 
 export default function Layout() {
@@ -48,9 +52,15 @@ export default function Layout() {
   }, []);
   useSearchShortcut(focusSearch);
   const mobileOpen = mobileSearch || searching;
+  // One "Upload files" button for the whole app (sidebar, icons-only strip, phone top bar). Greyed out on the Uploads page.
+  const openUpload = useUploads((s) => s.openDialog);
+  const onUploadsPage = loc.pathname === "/uploads";
+  const uploadLabel = onUploadsPage ? "You're already on the Uploads page" : "Upload files";
   const navigate = useNavigate();
   const closeMobileSearch = () => { setMobileSearch(false); if (searching) navigate("/files", { replace: true }); };
-  const hideLabel = m.hide ? "Show emails" : "Hide emails";
+  const hideLabel = m.hide ? "Privacy mode: on (emails hidden)" : "Privacy mode: off";
+  const onSettings = loc.pathname === "/settings";
+  const demoTitle = "Fake file and folder names are on (Settings > Developer). Display only.";
   useEvents();
   const { dark, toggleDark } = useUI();
   const auth = useAuth();
@@ -93,64 +103,78 @@ export default function Layout() {
             if (e.key === "ArrowRight") { e.preventDefault(); sw.set(iconsOnly ? { collapsed: false } : { width: Math.min(SIDEBAR_MAX, sw.width + 16) }); }
           }}
           className="absolute -right-1 top-0 z-30 hidden h-full w-2 cursor-col-resize touch-none outline-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 md:block" />
-        <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
-          <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
-            className="shrink-0 rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
-          <div className={cn("flex min-w-0 flex-col leading-tight", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
+        <div className={cn("flex items-center gap-2.5 px-4 py-3.5 md:py-5", iconsOnly && "md:justify-center md:px-0")}>
+          {/* While fake names are on, a small "Demo" tag sits on the logo's bottom edge, so the header layout never shifts. */}
+          <div className="relative shrink-0">
+            <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
+              className="block rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
+            {m.fakeNames && <Link to="/settings#developer" title={demoTitle} aria-label={demoTitle}
+              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-amber-400 px-1 text-[8px] font-bold uppercase leading-[12px] tracking-wide text-amber-950 shadow ring-2 ring-card hover:bg-amber-300">Demo</Link>}
+          </div>
+          <div className={cn("flex min-w-0 flex-1 flex-col leading-tight md:flex-none", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
             <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
-              className="w-fit text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline">DriveManager</a>
-            <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
-              className="w-fit text-[11px] text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
+              className="max-w-full truncate text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline md:w-fit">DriveManager</a>            <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
+              className="max-w-full truncate text-[11px] text-muted-foreground hover:text-primary hover:underline md:w-fit">@FluffyCyanNova</a>
           </div>
           {/* Phones: the search replaces the title and buttons in the top bar instead of adding a full-width row. */}
           {mobileOpen && <>
             <GlobalSearch ref={mobileSearchRef} className="min-w-0 flex-1 md:hidden" onDone={() => setMobileSearch(false)} />
             <button onClick={closeMobileSearch} className="shrink-0 rounded px-1.5 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-foreground md:hidden">Cancel</button>
           </>}
-          <div className={cn("ml-auto flex gap-1 md:hidden", mobileOpen && "hidden")}>
+          <div className={cn("ml-auto flex shrink-0 gap-0.5 md:hidden", mobileOpen && "hidden")}>
+            <button onClick={() => openUpload()} disabled={onUploadsPage} aria-label={uploadLabel} title={uploadLabel}
+              className="rounded bg-primary p-1.5 text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"><UploadCloud className="h-4 w-4" /></button>
             <button onClick={focusSearch} className="rounded p-1.5 hover:bg-accent" aria-label="Search everything"><Search className="h-4 w-4" /></button>
             <button onClick={syncAll} disabled={busy || connected.length === 0} className="rounded p-1.5 hover:bg-accent disabled:opacity-60" aria-label={syncLabel} title={syncLabel}><RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} /></button>
             <button onClick={toggleHideEmails} className="rounded p-1.5 hover:bg-accent" aria-label={hideLabel} aria-pressed={m.hide} title={hideLabel}>{m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             <button onClick={toggleDark} className="rounded p-1.5 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
+            <Link to="/settings" className={cn("rounded p-1.5 hover:bg-accent", onSettings && "bg-accent text-primary")} aria-label="Settings" title="Settings" aria-current={onSettings ? "page" : undefined}><Settings className="h-4 w-4" /></Link>
             <button onClick={logout} className="rounded p-1.5 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
         <SidebarNav collapsed={iconsOnly} />
         {iconsOnly && (
           <div className="mt-auto hidden flex-col items-center gap-1.5 pb-4 pt-6 md:absolute md:bottom-0 md:flex md:w-[var(--sb)]">
+            <button onClick={() => openUpload()} disabled={onUploadsPage} aria-label={uploadLabel} title={uploadLabel}
+              className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"><UploadCloud className="h-4 w-4" /></button>
             {([
               ["Search everything (Ctrl + K)", <Search key="s" className="h-4 w-4" />, focusSearch, false],
               [syncLabel, <RefreshCw key="r" className={cn("h-4 w-4", busy && "animate-spin")} />, syncAll, busy || connected.length === 0],
               [hideLabel, m.hide ? <EyeOff key="e" className="h-4 w-4" /> : <Eye key="e" className="h-4 w-4" />, toggleHideEmails, false],
               ["Toggle dark mode", dark ? <Sun key="d" className="h-4 w-4" /> : <Moon key="d" className="h-4 w-4" />, toggleDark, false],
+              ["Settings", <Settings key="g" className="h-4 w-4" />, () => navigate("/settings"), false],
               [`Sign out (${auth.username})`, <LogOut key="l" className="h-4 w-4" />, logout, false],
             ] as const).map(([label, icon, onClick, disabled]) => (
               <button key={label} onClick={onClick} disabled={disabled} aria-label={label} title={label}
-                className={cn("flex h-9 w-9 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-60", label === hideLabel && m.hide && "border-primary/50 text-foreground")}>{icon}</button>
+                className={cn("flex h-9 w-9 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-60", (label === hideLabel && m.hide) && "border-primary/50 text-foreground", label === "Settings" && onSettings && "border-primary/50 bg-accent text-primary")} aria-current={label === "Settings" && onSettings ? "page" : undefined}>{icon}</button>
             ))}
           </div>)}
         <div className={cn("mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:w-[var(--sb)]", iconsOnly ? "md:hidden" : "md:block")}>
-          <GlobalSearch ref={desktopSearch} className="mb-2" />
+          <button onClick={() => openUpload()} disabled={onUploadsPage} title={uploadLabel}
+            className="mb-1.5 flex h-9 w-full items-center gap-2.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">
+            <UploadCloud className="h-4 w-4" />Upload files</button>
+          <GlobalSearch ref={desktopSearch} className="mb-1.5" />
           <button onClick={syncAll} disabled={busy || connected.length === 0} title={syncLabel}
-            className="mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">
+            className="mb-1.5 flex h-9 w-full items-center gap-2.5 rounded-md border px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">
             <RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} />
             <span className="flex-1 text-left">{busy ? "Syncing…" : "Sync now"}</span>
             {busy && connected.length > 1 && <span className="text-xs tabular-nums">{syncingCount}/{connected.length}</span>}
           </button>
           <button onClick={toggleHideEmails} role="switch" aria-checked={m.hide}
-            title="Replaces every email address in the app with a stable alias (e.g. user-k3f9x2). Display only, for screenshots or screen sharing."
-            className={cn("mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm hover:bg-accent", m.hide ? "border-primary/50 text-foreground" : "text-muted-foreground")}>
+            title="Privacy mode replaces every email address in the app with a stable alias (e.g. user-k3f9x2). Display only, for screenshots or screen sharing."
+            className={cn("mb-1.5 flex h-9 w-full items-center gap-2.5 rounded-md border px-3 text-sm hover:bg-accent", m.hide ? "border-primary/50 text-foreground" : "text-muted-foreground")}>
             {m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            <span className="flex-1 text-left">Hide emails</span>
+            <span className="flex-1 text-left">Privacy mode</span>
             <span className={cn("relative h-4 w-7 rounded-full transition-colors", m.hide ? "bg-primary" : "bg-muted-foreground/40")}>
               <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-background transition-all", m.hide ? "left-3.5" : "left-0.5")} />
             </span>
           </button>
-          <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+          <div className="flex h-9 items-center justify-between rounded-md border pl-3 pr-1.5 text-sm">
             <span className="truncate text-muted-foreground">{auth.username}</span>
             <div className="flex gap-1">
-              <button onClick={toggleDark} className="rounded p-1 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
-              <button onClick={logout} className="rounded p-1 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
+              <button onClick={toggleDark} className="rounded p-1 hover:bg-accent" aria-label="Toggle dark mode" title="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
+              <Link to="/settings" className={cn("rounded p-1 hover:bg-accent", onSettings && "bg-accent text-primary")} aria-label="Settings" title="Settings" aria-current={onSettings ? "page" : undefined}><Settings className="h-4 w-4" /></Link>
+              <button onClick={logout} className="rounded p-1 hover:bg-accent" aria-label="Sign out" title="Sign out"><LogOut className="h-4 w-4" /></button>
             </div>
           </div>
         </div>
@@ -163,6 +187,9 @@ export default function Layout() {
         {health.data && !health.data.encryption_key_ok && <Banner tone="danger">The encryption key doesn't match this database, so stored Google credentials can't be read. Restore the original APP_ENCRYPTION_KEY from your backup.</Banner>}
         <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8"><Outlet /></div>
       </main>
+      <UploadDialog />
+      <DropOverlay />
+      <UploadPanel />
       <Toaster />
     </div>
   );

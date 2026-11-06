@@ -99,12 +99,21 @@ def retry(db: Session, job: UploadJob, account_id: str | None = None, folder_id:
     return job
 
 
-def to_dict(j: UploadJob) -> dict:
+def to_dict(j: UploadJob, db: Session | None = None) -> dict:
     from app.core.time import iso
     pct = round(100 * j.bytes_uploaded / j.size, 1) if j.size else (100.0 if j.state == "COMPLETED" else 0.0)
     return {"id": j.id, "filename": j.filename, "size": j.size, "mime_type": j.mime_type, "mode": j.mode, "state": j.state,
             "account_id": j.account_id, "account_email": j.account_email, "destination_folder_id": j.destination_folder_id,
-            "destination_folder_name": j.destination_folder_name, "virtual_folder_id": j.virtual_folder_id, "bytes_uploaded": j.bytes_uploaded, "progress": pct,
+            "destination_folder_name": j.destination_folder_name, "virtual_folder_id": j.virtual_folder_id,
+            "destination_path": _destination_path(db, j), "bytes_uploaded": j.bytes_uploaded, "progress": pct,
             "google_file_id": j.google_file_id, "error_code": j.error_code, "error_message": j.error_message,
             "allocation_reason": j.allocation_reason, "attempts": j.attempts, "cancel_requested": j.cancel_requested,
             "created_at": iso(j.created_at), "finished_at": iso(j.finished_at), "retryable": j.state in ("FAILED", "CANCELLED")}
+
+
+def _destination_path(db: Session | None, j: UploadJob) -> str | None:
+    """Full folder path once the account is known (Automatic decides it later)."""
+    if db is None or not j.account_id:
+        return None
+    from app.database.repositories.files import folder_path
+    return folder_path(db, j.account_id, j.destination_folder_id) or j.destination_folder_name
