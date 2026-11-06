@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, CloudUpload, Link2, Loader2, RotateCcw, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AccountChip, EmptyState, onError, PageHeader, Spinner } from "@/components/Common";
 import { UploadForm, useVirtualPaths } from "@/components/UploadForm";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,8 @@ export default function Uploads() {
   const active = (accounts.data ?? []).filter((a) => a.status === "ACTIVE");
   const [retrying, setRetrying] = useState<UploadJob | null>(null);
   // Files still being sent from this browser to the server (shared with the upload dialog and the progress panel).
-  const local = useUploads((s) => s.items.filter((x) => x.status !== "sent"));
+  const allItems = useUploads((s) => s.items);
+  const local = useMemo(() => allItems.filter((x) => x.status !== "sent"), [allItems]);
   const resend = useUploads((s) => s.resend);
   const dismissLocal = (key: string) => useUploads.setState((s) => ({ items: s.items.filter((x) => x.key !== key) }));
   const vpaths = useVirtualPaths();
