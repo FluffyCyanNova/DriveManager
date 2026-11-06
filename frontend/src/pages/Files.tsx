@@ -395,11 +395,17 @@ function DriveBrowser() {
       <Dialog open={!!moving} onOpenChange={(o) => !o && setMoving(null)} title={`Move “${moving?.name ?? ""}”`} description="Items can be moved within the same account.">
         {moving && <FolderPicker accountId={moving.account_id} label="Move here" onCancel={() => setMoving(null)} onPick={(f) => move.mutate({ it: moving, dest: f.id ?? "root" })} />}</Dialog>
       <DoubleConfirm open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete permanently?" confirmLabel="Delete forever" busy={purge.isPending}
-        items={deleting ? [{ name: deleting.name, size: deleting.size, isFolder: deleting.is_folder }] : []} onConfirm={() => deleting && purge.mutate(deleting)}>
+        items={deleting ? [{ name: deleting.name, size: deleting.size, isFolder: deleting.is_folder }] : []} onConfirm={() => deleting && purge.mutate(deleting)}
+        alternative={deleting && !deleting.trashed && deleting.can.trash ? { label: "Move to trash instead", onSelect: () => { trash.mutate(deleting); setDeleting(null); } } : undefined}>
         “{deleting?.name}” will be removed from Google Drive right away{deleting && !deleting.trashed ? ", without going to the trash first" : ""}.
         {deleting?.is_folder ? " Everything inside this folder that you own is deleted with it." : ""} This can't be undone.</DoubleConfirm>
       <DoubleConfirm open={!!bulkDeleting} onOpenChange={(o) => !o && setBulkDeleting(null)} title={`Delete ${bulkDeleting?.length ?? 0} item(s) permanently?`} confirmLabel="Delete forever" busy={bulk.isPending}
         items={(bulkDeleting ?? []).map((i) => ({ name: i.name, size: i.size, isFolder: i.is_folder }))}
+        alternative={loc !== "trash" && (bulkDeleting ?? []).some((i) => i.can.trash && !i.trashed) ? { label: "Move to trash instead", onSelect: async () => {
+          const list = (bulkDeleting ?? []).filter((i) => i.can.trash && !i.trashed);
+          setBulkDeleting(null); setSel(new Set());
+          for (const i of list) await trash.mutateAsync(i).catch(() => undefined);
+        } } : undefined}
         onConfirm={() => bulkDeleting && bulk.mutate({ items: bulkDeleting, action: "delete" })}>
         The selected items will be removed from Google Drive right away{loc !== "trash" ? ", without going to the trash first" : ""}.
         {bulkDeleting?.some((i) => i.is_folder) ? " Everything you own inside the selected folders is deleted with them." : ""} This can't be undone.</DoubleConfirm>

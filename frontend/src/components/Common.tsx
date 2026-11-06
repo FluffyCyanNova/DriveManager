@@ -48,13 +48,16 @@ export function AccountChip({ id, email }: { id: string; email: string | null | 
 export const errText = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
 export const onError = (e: unknown) => toast.error(errText(e));
 
-export function ConfirmDialog({ open, onOpenChange, title, children, confirmLabel, danger, onConfirm, busy }: {
+export function ConfirmDialog({ open, onOpenChange, title, children, confirmLabel, danger, onConfirm, busy, extra }: {
   open: boolean; onOpenChange: (o: boolean) => void; title: string; children: ReactNode; confirmLabel: string; danger?: boolean; onConfirm: () => void; busy?: boolean;
+  /** Optional middle button, e.g. a safer alternative to the confirm action. */
+  extra?: ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={title} description={children}>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+        {extra}
         <Button variant={danger ? "destructive" : "default"} onClick={onConfirm} disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}{confirmLabel}</Button>
       </div>
     </Dialog>
@@ -86,9 +89,11 @@ export interface DoomedItem { name: string; size?: number | null; isFolder?: boo
  * item that will be deleted and only enables the final button after a 3-second countdown. `items` may be a loader for
  * lists that have to be fetched first (e.g. everything in the trash).
  */
-export function DoubleConfirm({ open, onOpenChange, title, children, confirmLabel, finalLabel = "Permanently delete", items, onConfirm, busy }: {
+export function DoubleConfirm({ open, onOpenChange, title, children, confirmLabel, finalLabel = "Permanently delete", items, onConfirm, busy, alternative }: {
   open: boolean; onOpenChange: (o: boolean) => void; title: string; children: ReactNode; confirmLabel: string; finalLabel?: string;
   items: DoomedItem[] | (() => Promise<DoomedItem[]>); onConfirm: () => void; busy?: boolean;
+  /** Safer option shown between Cancel and the confirm button on step 1 (e.g. "Move to trash instead"). */
+  alternative?: { label: string; onSelect: () => void };
 }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [list, setList] = useState<DoomedItem[] | null>(null);
@@ -108,7 +113,9 @@ export function DoubleConfirm({ open, onOpenChange, title, children, confirmLabe
   const total = (list ?? []).reduce((a, i) => a + (i.size ?? 0), 0);
   const folders = (list ?? []).filter((i) => i.isFolder).length;
 
-  if (step === 1) return <ConfirmDialog open={open} onOpenChange={onOpenChange} title={title} confirmLabel={confirmLabel} danger onConfirm={next}>{children}</ConfirmDialog>;
+  if (step === 1) return (
+    <ConfirmDialog open={open} onOpenChange={onOpenChange} title={title} confirmLabel={confirmLabel} danger onConfirm={next}
+      extra={alternative && <Button variant="outline" onClick={alternative.onSelect}>{alternative.label}</Button>}>{children}</ConfirmDialog>);
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Are you sure?"
       description={list === null ? "Getting the list of items…" : <>
