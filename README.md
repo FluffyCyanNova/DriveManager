@@ -16,7 +16,8 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 **Files**
 * Browse and search **My Drive, Shared with me, Shared drives and Trash** across all accounts in one list.
 * Filter by account and file type. Sort by name, account, date or size, either from the menu or by **clicking a column header** (click again to flip). Choose **Folders first, Files first or Mixed**; the choice is remembered.
-* Resizable columns: drag the edge, or double-click to fit.
+* Resizable columns: drag the edge, or double-click to fit. The **⋮ actions** button stays pinned to the right however wide the columns get.
+* **Click a file's name** to choose **Download** or **Open in Google Drive**. Tick *Don't ask again until I reload the page* to skip the question for the rest of the session. This works in the Google Drive and Virtual folders tabs.
 * Rename, move, create folders, download (Google Docs/Sheets/Slides export to Office or PDF).
 * **Move to trash**, restore, **Delete permanently** (from anywhere, with confirmation), and **Empty trash** per account or for all of them.
 * Quick links in the sidebar: **Files → Trash** and **Files → Virtual folders**.

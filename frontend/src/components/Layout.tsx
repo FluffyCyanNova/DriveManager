@@ -113,13 +113,15 @@ export default function Layout() {
           </div>
         </div>
       </aside>
-      <main className="min-w-0 flex-1">
+      <main className="flex min-w-0 flex-1 flex-col md:min-h-screen">
         {needAuth.length > 0 && (
           <Banner tone="danger" to="/accounts">{needAuth.map((a) => m.email(a.email)).join(", ")} {needAuth.length > 1 ? "need" : "needs"} to be reconnected to Google. Syncing and uploads for {needAuth.length > 1 ? "them are" : "it is"} paused.</Banner>
         )}
         {health.data && !health.data.worker.alive && health.data.worker.enabled && <Banner tone="warn">The background worker isn't responding. Uploads and sync are paused until it is back (run <code>docker compose logs worker</code>).</Banner>}
         {health.data && !health.data.encryption_key_ok && <Banner tone="danger">The encryption key doesn't match this database, so stored Google credentials can't be read. Restore the original APP_ENCRYPTION_KEY from your backup.</Banner>}
-        <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8"><Outlet /></div>
+        <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-8 md:py-8"><Outlet /></div>
+        {/* Credit: bottom left of the page, below the content (pushed to the window bottom on short pages). */}
+        <footer className="mx-auto w-full max-w-6xl px-4 pb-4 text-xs text-muted-foreground/80 md:px-8">by FluffyCyanNova {"<3"}</footer>
       </main>
       <Toaster />
     </div>
