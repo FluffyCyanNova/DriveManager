@@ -3,6 +3,7 @@ name = "drivemanager-backend"
 version = "1.0.0"
 description = "DriveManager backend and worker"
 requires-python = ">=3.11"
+license = { text = "MIT" }
 dependencies = [
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.30,<1",
