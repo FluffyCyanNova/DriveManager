@@ -47,7 +47,7 @@ function FileOpenDialog({ item, onClose, onChoose, onShare }: { item: DriveItem 
   const pick = (c: Choice) => { if (!item) return; if (dontAsk) remember(c); setDontAsk(false); onChoose(item, c); };
   return (
     <Dialog open={!!item} onOpenChange={(o) => { if (!o) { setDontAsk(false); onClose(); } }} title="Open file"
-      description="Download a copy, open the file in Google Drive, or change who it's shared with.">
+      description="Download a copy, or open the file in Google Drive in a new tab.">
       {item && (
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm">
@@ -55,19 +55,26 @@ function FileOpenDialog({ item, onClose, onChoose, onShare }: { item: DriveItem 
             <span className="min-w-0 flex-1 truncate font-medium" title={item.name}>{item.name}</span>
             {item.size != null && <span className="shrink-0 text-muted-foreground">{bytes(item.size)}</span>}
           </div>
-          <div className={onShare ? "grid gap-2 sm:grid-cols-3" : "grid gap-2 sm:grid-cols-2"}>
+          <div className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" disabled={!canDownload(item)} onClick={() => pick("download")} autoFocus>
               <Download className="h-4 w-4" />Download</Button>
             <Button disabled={!canOpen(item)} onClick={() => pick("drive")}>
               <ExternalLink className="h-4 w-4" />Open in Drive</Button>
-            {onShare && <Button variant="outline" disabled={!item.can.share} title={item.can.share ? "Share or copy the link" : "Google doesn't allow sharing this file with this account"}
-              onClick={() => onShare(item)}><Share2 className="h-4 w-4" />Share</Button>}
           </div>
           {!canDownload(item) && <p className="text-xs text-muted-foreground">{item.trashed ? "Restore the file to download it." : "Google doesn't allow downloading this file with this account."}</p>}
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input type="checkbox" checked={dontAsk} onChange={(e) => setDontAsk(e.target.checked)} />
-            Don't ask again until I reload the page
+          {/* Only Download / Open in Drive can be remembered; Share is a separate action below and never remembered. */}
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" className="mt-0.5" checked={dontAsk} onChange={(e) => setDontAsk(e.target.checked)} />
+            <span>Remember <b className="font-medium text-foreground">Download</b> or <b className="font-medium text-foreground">Open in Drive</b> until I reload the page.
+              Clicking a file then does that straight away.</span>
           </label>
+          {onShare && (
+            <div className="flex items-center justify-between gap-3 border-t pt-3 text-sm">
+              <span className="text-muted-foreground">Want to send it to someone?</span>
+              <Button size="sm" variant="ghost" disabled={!item.can.share}
+                title={item.can.share ? "Change who can open it, or copy its link" : "Google doesn't allow sharing this file with this account"}
+                onClick={() => onShare(item)}><Share2 className="h-3.5 w-3.5" />Share or copy link…</Button>
+            </div>)}
         </div>
       )}
     </Dialog>
