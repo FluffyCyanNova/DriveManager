@@ -121,3 +121,8 @@ Everything Google-facing is tested against fakes, so real Google API behaviour i
 
 ## Known limitations
 No pause button for uploads (cancel, retry and auto-resume exist). No cross-account move or copy. Single user. Google-native exports are limited to ~10 MB by Google. The app must be opened at the registered redirect address (`http://localhost:8000`) to connect accounts.
+
+## License
+[MIT](LICENSE) © 2026 FluffyCyanNova. You may use, change and share it, including commercially, as long as the copyright notice stays with it. It comes with no warranty.
+
+Third-party packages keep their own licenses (mostly MIT, plus Apache-2.0 for Google's API client and the SIL Open Font License for IBM Plex Sans). Each install needs its own Google Cloud OAuth credentials (see [docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md)); none are included in this repository.
