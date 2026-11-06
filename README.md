@@ -2,9 +2,9 @@
 
 A private, self-hosted dashboard for managing several Google Drive accounts in one place. It runs on your own Windows PC in Docker and talks to Google only through the official Drive API.
 
-![Dashboard: combined storage bar and one card per account, with emails hidden](docs/screenshots/dashboard.png)
+![A tour of DriveManager: uploads, the file list with several files selected, and the accounts page](docs/screenshots/dashboard.gif)
 
-<sub>Screenshots use sample accounts with **Privacy mode** switched on.</sub>
+<sub>Recorded with **Privacy mode** and **Fake file and folder names** switched on, so emails and file names are made up.</sub>
 
 ## Features
 
