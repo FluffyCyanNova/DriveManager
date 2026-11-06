@@ -184,13 +184,13 @@ Browser: ${navigator.userAgent}`;
             <p className="text-muted-foreground">Made by <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@FluffyCyanNova</a></p>
           </div>
         </div>
-        <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[auto_1fr]">
-          <dt className="text-muted-foreground">Build</dt>
-          <dd>{sha ? <a href={`${REPO}/commit/${sha}`} target="_blank" rel="noopener noreferrer" className="font-mono text-primary hover:underline">{commit}</a> : <span className="text-muted-foreground">Not recorded (started without the scripts)</span>}
-            {commit?.endsWith("+changes") && <span className="ml-2 text-xs text-muted-foreground">built with uncommitted changes</span>}</dd>
-          <dt className="text-muted-foreground">Built</dt>
-          <dd>{built ?? <span className="text-muted-foreground">Not recorded</span>}</dd>
-        </dl>
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-muted-foreground">Build</span>
+          {sha ? <a href={`${REPO}/commit/${sha}`} target="_blank" rel="noopener noreferrer" className="font-mono text-primary hover:underline">{commit}</a>
+            : <span className="text-muted-foreground">not recorded</span>}
+          {built && <span className="text-xs text-muted-foreground">{built}</span>}
+          {commit?.endsWith("+changes") && <span className="text-xs text-muted-foreground">(built with uncommitted changes)</span>}
+        </p>
         <div className="flex flex-wrap gap-2">
           <a className={link} href={REPO} target="_blank" rel="noopener noreferrer">GitHub repository</a>
           <a className={link} href={issueUrl} target="_blank" rel="noopener noreferrer">Report a problem</a>
