@@ -206,9 +206,9 @@ Browser: ${navigator.userAgent}`;
         <div className="flex items-start gap-3">
           <img src="/favicon.svg" alt="" className="h-10 w-10 shrink-0" />
           <div className="min-w-0 space-y-0.5">
-            <p className="text-base font-semibold">DriveManager <span className="font-normal text-muted-foreground">· version {version ?? "…"}</span></p>
+            <p className="text-base font-semibold">DriveManager <span className="font-normal text-muted-foreground">· version {version ?? "…"} · </span>
+              <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub" className="font-normal text-primary hover:underline">@FluffyCyanNova</a></p>
             <p className="text-muted-foreground">A self-hosted dashboard for managing several Google Drive accounts in one place.</p>
-            <p className="text-muted-foreground">Made by <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@FluffyCyanNova</a></p>
           </div>
         </div>
         <p className="flex flex-wrap items-baseline gap-x-2">
