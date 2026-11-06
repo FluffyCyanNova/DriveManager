@@ -12,6 +12,7 @@ import { useAuth } from "@/stores/auth";
 import { toast, useUI } from "@/stores/ui";
 import { cn } from "@/utils/cn";
 import { useMask, usePrivacy } from "@/utils/privacy";
+import { DropOverlay } from "@/components/DropOverlay";
 import { UploadDialog } from "@/components/UploadForm";
 import { UploadPanel } from "@/components/UploadPanel";
 
@@ -166,6 +167,7 @@ export default function Layout() {
         <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8"><Outlet /></div>
       </main>
       <UploadDialog />
+      <DropOverlay />
       <UploadPanel />
       <Toaster />
     </div>

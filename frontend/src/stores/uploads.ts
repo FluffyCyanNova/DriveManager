@@ -29,7 +29,8 @@ interface UploadsState {
   items: LocalItem[];
   panelOpen: boolean;
   panelCollapsed: boolean;
-  dialog: { open: boolean; prefill: UploadPrefill };
+  /** `files`: dropped on the window; shown in the dialog and only uploaded after pressing Upload. */
+  dialog: { open: boolean; prefill: UploadPrefill; files: File[] };
   /** Where the user is browsing (set by the Files / Virtual folders pages); "Upload files" starts from here. */
   context: UploadPrefill;
   setContext: (c: UploadPrefill) => void;
@@ -37,7 +38,7 @@ interface UploadsState {
   resend: (key: string) => void;
   /** A server job was retried (possibly elsewhere); keep it in the panel. */
   track: (job: UploadJob) => void;
-  openDialog: (prefill?: UploadPrefill) => void;
+  openDialog: (prefill?: UploadPrefill, files?: File[]) => void;
   closeDialog: () => void;
   setCollapsed: (v: boolean) => void;
   closePanel: () => void;
@@ -71,7 +72,7 @@ export const useUploads = create<UploadsState>((set, get) => {
     items: [],
     panelOpen: false,
     panelCollapsed: typeof window !== "undefined" && window.innerWidth < 768,   // phones start collapsed
-    dialog: { open: false, prefill: {} },
+    dialog: { open: false, prefill: {}, files: [] },
     context: {},
     setContext: (c) => set({ context: c }),
     enqueue: (files, dest) => {
@@ -85,7 +86,7 @@ export const useUploads = create<UploadsState>((set, get) => {
       if (get().items.some((x) => x.jobId === job.id)) return;
       set({ items: [...get().items, { key: `u${++seq}`, file: new File([], job.filename), dest: { mode: job.mode, accountId: job.account_id ?? "", folder: null, virtualFolderId: "" }, sent: job.size, status: "sent", jobId: job.id }], panelOpen: true });
     },
-    openDialog: (prefill) => set({ dialog: { open: true, prefill: prefill ?? get().context } }),
+    openDialog: (prefill, files = []) => set({ dialog: { open: true, prefill: prefill ?? get().context, files } }),
     closeDialog: () => set({ dialog: { ...get().dialog, open: false } }),
     setCollapsed: (v) => set({ panelCollapsed: v }),
     // Closing hides the panel and forgets finished items; anything still in progress keeps going and reappears with the next upload.

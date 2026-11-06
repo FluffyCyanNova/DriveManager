@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { CloudUpload, FolderOpen, Sparkles } from "lucide-react";
+import { CloudUpload, FolderOpen, Sparkles, X } from "lucide-react";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { FolderPicker, type PickedFolder } from "@/components/FolderPicker";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export function useVirtualPaths() {
  * Destination controls + drop zone, shared by the Uploads page and the "Upload files" dialog.
  * `prefill` sets the starting account / folder / virtual folder; `onQueued` runs after files are handed to the queue.
  */
-export function UploadForm({ prefill, onQueued, compact }: { prefill?: UploadPrefill; onQueued?: (count: number) => void; compact?: boolean }) {
+export function UploadForm({ prefill, onQueued, compact, initialFiles }: { prefill?: UploadPrefill; onQueued?: (count: number) => void; compact?: boolean; initialFiles?: File[] }) {
   const m = useMask();
   const accounts = useAccounts();
   const enqueue = useUploads((s) => s.enqueue);
@@ -43,6 +43,9 @@ export function UploadForm({ prefill, onQueued, compact }: { prefill?: UploadPre
   const [pickFolder, setPickFolder] = useState(false);
   const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  // Files dropped on the window arrive here first ("staged"): listed for review, uploaded only after pressing Upload.
+  const [staged, setStaged] = useState<File[]>(initialFiles ?? []);
+  const staging = (initialFiles?.length ?? 0) > 0;
   const vpaths = useVirtualPaths();
   const chosenVirtual = vpaths.some((v) => v.id === virtualFolderId) ? virtualFolderId : "";
   const effectiveAccount = active.some((a) => a.id === accountId) ? accountId : active[0]?.id || "";
@@ -50,6 +53,11 @@ export function UploadForm({ prefill, onQueued, compact }: { prefill?: UploadPre
 
   const addFiles = (files: FileList | File[]) => {
     const list = Array.from(files);
+    if (!list.length) return;
+    if (staging) { setStaged((s) => [...s, ...list]); return; }
+    send(list);
+  };
+  const send = (list: File[]) => {
     if (!list.length) return;
     if (mode === "MANUAL" && !effectiveAccount) { toast.error("Connect an account first."); return; }
     const dest = mode === "MANUAL" && folderForAccount?.id ? { id: folderForAccount.id, name: folderForAccount.name } : null;
@@ -83,11 +91,28 @@ export function UploadForm({ prefill, onQueued, compact }: { prefill?: UploadPre
       <div onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop}
         className={cn("flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-6 text-center transition-colors", compact ? "py-7" : "py-10", drag ? "border-primary bg-accent" : "border-border")}>
         <CloudUpload className="h-8 w-8 text-muted-foreground" />
-        <p className="font-medium">Drop files here</p>
+        <p className="font-medium">{staging ? "Drop more files here" : "Drop files here"}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => input.current?.click()} disabled={active.length === 0}>Browse files</Button>
         <input ref={input} type="file" multiple hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
         {active.length === 0 && <p className="text-sm text-destructive">No connected account is available. Connect or reconnect one on the Accounts page.</p>}
       </div>
+      {staging && (
+        <div className="space-y-2">
+          <ul className="max-h-40 divide-y overflow-y-auto rounded-md border text-sm">
+            {staged.map((f, i) => (
+              <li key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-1.5">
+                <span className="min-w-0 flex-1 truncate" title={f.name}>{f.name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{bytes(f.size)}</span>
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+              </li>))}
+          </ul>
+          <div className="flex items-center justify-end gap-2">
+            <span className="mr-auto text-xs text-muted-foreground">{staged.length} file{staged.length === 1 ? "" : "s"} · {bytes(staged.reduce((a, f) => a + f.size, 0))}</span>
+            <Button type="button" disabled={!staged.length || (mode === "MANUAL" && !effectiveAccount)} onClick={() => send(staged)}>
+              <CloudUpload className="h-4 w-4" />Upload {staged.length || ""} file{staged.length === 1 ? "" : "s"}</Button>
+          </div>
+        </div>)}
       <Dialog open={pickFolder} onOpenChange={setPickFolder} title="Choose destination folder" description="Pick where in this account the files will be stored.">
         {pickFolder && effectiveAccount && <FolderPicker accountId={effectiveAccount} onCancel={() => setPickFolder(false)} onPick={(f) => { setFolder(f.id ? f : null); setAccountId(effectiveAccount); setPickFolder(false); }} />}
       </Dialog>
@@ -102,7 +127,7 @@ export function UploadDialog() {
   return (
     <Dialog open={dialog.open} onOpenChange={(o) => !o && close()} title="Upload files" className="max-w-xl"
       description="Files go to your DriveManager server first, then to Google in the background. Progress shows at the bottom right.">
-      {dialog.open && <UploadForm compact prefill={dialog.prefill} onQueued={() => close()} />}
+      {dialog.open && <UploadForm compact prefill={dialog.prefill} initialFiles={dialog.files} onQueued={() => close()} />}
     </Dialog>
   );
 }
