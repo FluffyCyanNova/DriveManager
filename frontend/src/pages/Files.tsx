@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/input";
+import { useContextMenu, useLongPress } from "@/components/ui/contextmenu";
 import { RowMenu } from "@/components/ui/menu";
 import { fitColumn, ResizableTh, useColumnWidths, useMinWidth, type ColumnSpec } from "@/hooks/useColumnWidths";
 import { useAccounts } from "@/hooks/queries";
@@ -78,6 +79,9 @@ function DriveBrowser() {
   const [sort, setSort] = useState("name");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [folders, setFolders] = useState<FolderPlacement>(readFolders);
+  // "Show all files": every file at any depth in the current tab, as one flat list (remembered in this browser).
+  const [allFiles, setAllFilesState] = useState(() => { try { return localStorage.getItem("dm-files-all") === "1"; } catch { return false; } });
+  const setAllFiles = (v: boolean) => { setAllFilesState(v); setPage(1); setStack([]); try { localStorage.setItem("dm-files-all", v ? "1" : "0"); } catch { /* storage unavailable */ } };
   useEffect(() => { try { localStorage.setItem(FOLDERS_KEY, folders); } catch { /* storage unavailable */ } }, [folders]);
   const sortBy = (c: Col) => { if (sort === c) setDir(dir === "asc" ? "desc" : "asc"); else { setSort(c); setDir(FIRST_DIR[c]); } setPage(1); };
   const [page, setPage] = useState(1);
@@ -105,17 +109,32 @@ function DriveBrowser() {
   const [emptying, setEmptying] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => { setQ(qInput.trim()); setPage(1); }, 300); return () => clearTimeout(t); }, [qInput]);
+  // Sidebar search (or a shared link) sets ?q=: search everything, i.e. all accounts and every location except Trash.
+  const urlQ = search.get("q") ?? "";
+  useEffect(() => {
+    if (urlQ === qInput) return;
+    setQInput(urlQ);
+    if (urlQ) { setAccountId(""); setBaseLoc("my_drive"); setStack([]); }
+  }, [urlQ]); // eslint-disable-line react-hooks/exhaustive-deps
+  const typeSearch = (v: string) => {
+    setQInput(v);
+    const next = new URLSearchParams(search);
+    if (v) next.set("q", v); else next.delete("q");
+    setSearch(next, { replace: true });
+  };
   useEffect(() => { setSel(new Set()); }, [loc, stack, q, accountId, type, page]);
 
   const top = stack[stack.length - 1];
-  const sharedRoot = loc === "shared_drive" && !top && !q;
+  const flat = allFiles && loc !== "trash" && !q;
+  const sharedRoot = loc === "shared_drive" && !top && !q && !flat;
   const params = new URLSearchParams({ sort, direction: dir, folders, page: String(page), page_size: "100" });
   if (type) params.set("type", type);
   if (q) params.set("q", q);
   if (loc === "trash") params.set("trashed", "true");
   if (accountId && !top) params.set("account_id", accountId);
-  if (top && !q && loc !== "trash") { params.set("parent_id", top.id); params.set("account_id", top.accountId); }
-  if (!top && !q && loc !== "trash") params.set("location", loc);
+  if (flat) { params.set("all_files", "true"); params.set("location", loc); }
+  else if (top && !q && loc !== "trash") { params.set("parent_id", top.id); params.set("account_id", top.accountId); }
+  else if (!top && !q && loc !== "trash") params.set("location", loc);
   if (loc === "shared_drive" && (q)) params.set("location", "shared_drive");
 
   const files = useQuery({ queryKey: ["files", "list", params.toString()], enabled: !sharedRoot, queryFn: () => api.get<FilePage>(`/api/files?${params}`), placeholderData: (p) => p });
@@ -188,10 +207,29 @@ function DriveBrowser() {
     if (l === "trash") setSearch({ view: "trash" });
     else { setBaseLoc(l); if (search.get("view")) setSearch({}); }
     setStack([]); setPage(1); setQInput("");
+    if (search.get("q")) { const n = new URLSearchParams(search); n.delete("q"); if (l === "trash") n.set("view", "trash"); setSearch(n, { replace: true }); }
   };
   // Also reset when the view changes from outside (sidebar links, browser back/forward).
   useEffect(() => { setStack([]); setPage(1); }, [loc]);
-  const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { setQInput(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
+  const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { typeSearch(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
+
+  // Right-click (or long-press) on a row opens the same actions as ⋮. If the row is part of a multi-selection,
+  // the menu acts on every selected item instead. Shift + right-click keeps the browser's own menu.
+  const ctx = useContextMenu();
+  const longPress = useLongPress();
+  const [ctxRow, setCtxRow] = useState<string | null>(null);
+  useEffect(() => { if (!ctx.openFor) setCtxRow(null); }, [ctx.openFor]);
+  const bulkMenu = (list: DriveItem[]) => loc === "trash" ? [
+    { label: `Restore ${list.length} items`, icon: <RotateCcw className="h-4 w-4" />, disabled: !list.some((i) => i.can.untrash), onSelect: () => bulk.mutate({ items: list.filter((i) => i.can.untrash), action: "restore" }) },
+    { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, disabled: !list.some((i) => i.can.delete), onSelect: () => setBulkDeleting(list.filter((i) => i.can.delete)) },
+  ] : [
+    { label: "Add to virtual folder", icon: <Link2 className="h-4 w-4" />, onSelect: () => setAddTo(list) },
+    { label: `Move ${list.length} items to trash`, icon: <Trash2 className="h-4 w-4" />, onSelect: async () => { for (const i of list) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); } },
+    { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, disabled: !list.some((i) => i.can.delete), onSelect: () => setBulkDeleting(list.filter((i) => i.can.delete)) },
+  ];
+  const rowMenu = (it: DriveItem) => (sel.has(it.id) && sel.size > 1
+    ? { items: bulkMenu(items.filter((i) => sel.has(i.id))), title: `${sel.size} selected` }
+    : { items: menu(it), title: it.name });
 
   const menu = (it: DriveItem) => [
     { label: "Open in Google Drive", icon: <ExternalLink className="h-4 w-4" />, hidden: !it.web_view_link, onSelect: () => window.open(it.web_view_link!, "_blank", "noopener") },
@@ -214,9 +252,9 @@ function DriveBrowser() {
           {([["my_drive", "My Drive"], ["shared_with_me", "Shared with me"], ["shared_drive", "Shared drives"], ["trash", "Trash"]] as const).map(([k, t]) => (
             <button key={k} role="tab" aria-selected={loc === k} onClick={() => go(k)} className={cn("rounded px-3 py-1 text-sm", loc === k ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>{t}</button>))}
         </div>
-        <div className="relative min-w-48 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => setQInput(e.target.value)} /></div>
-        {canMkdir && <Button variant="outline" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
+        {canMkdir && <Button variant="outline" className="ml-auto" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
       </div>
+      <div className="relative mb-2"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
       {/* Filters on their own row; w-auto lets each select size to its longest option so labels never get cut off. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select aria-label="Account" className="w-auto max-w-xs" value={accountId} onChange={(e) => { setAccountId(e.target.value); setStack([]); setPage(1); }}>
@@ -227,6 +265,10 @@ function DriveBrowser() {
           <option value="name:asc">Name A–Z</option><option value="name:desc">Name Z–A</option><option value="account:asc">Account A–Z</option><option value="account:desc">Account Z–A</option><option value="modified:desc">Newest first</option><option value="modified:asc">Oldest first</option><option value="size:desc">Largest first</option><option value="size:asc">Smallest first</option></Select>
         <Select aria-label="Folder placement" className="w-auto" value={folders} onChange={(e) => { setFolders(e.target.value as FolderPlacement); setPage(1); }}>
           <option value="first">Folders first</option><option value="last">Files first</option><option value="mixed">Mixed together</option></Select>
+        {loc !== "trash" && (
+          <label className={cn("flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm", allFiles ? "border-primary/60 bg-accent text-accent-foreground" : "bg-card text-muted-foreground hover:text-foreground")}
+            title="List every file in every folder of this tab as one flat list">
+            <input type="checkbox" checked={allFiles} onChange={(e) => setAllFiles(e.target.checked)} />Show all files</label>)}
       </div>
 
       {(stack.length > 0 && !q) && (
@@ -272,11 +314,15 @@ function DriveBrowser() {
               <th className="w-10 px-4 py-2.5"><input type="checkbox" aria-label="Select all" checked={selected.length === items.length} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i.id)) : new Set())} /></th>
               {head("name", "Name")}{head("account", "Account", "hidden md:table-cell")}{head("modified", "Modified", "hidden sm:table-cell")}{head("size", "Size", "text-right")}<th /><th className={STICKY_TH} aria-label="Actions" /></tr></thead>
             <tbody className="divide-y">{items.map((it) => (
-              <tr key={it.id} className={cn("group hover:bg-muted/40", sel.has(it.id) && "bg-accent/50")}>
+              <tr key={it.id} className={cn("group hover:bg-muted/40", sel.has(it.id) && "bg-accent/50", ctxRow === it.id && "bg-muted/60 outline outline-1 -outline-offset-1 outline-primary/50")}
+                onContextMenu={(e) => { const m = rowMenu(it); if (ctx.onContextMenu(e, m.items, m.title)) setCtxRow(it.id); }}
+                {...longPress((x, y) => { const m = rowMenu(it); ctx.openAt(x, y, m.items, m.title); setCtxRow(it.id); })}>
                 <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${it.name}`} checked={sel.has(it.id)} onChange={(e) => { const n = new Set(sel); e.target.checked ? n.add(it.id) : n.delete(it.id); setSel(n); }} /></td>
                 <td data-col="name" className="px-2 py-2"><div className="flex min-w-0 items-center gap-2.5"><FileIcon mime={it.mime_type} />
                   {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={it.name} onClick={() => openFolder(it)}>{it.name}</button> : <button className="truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it)}>{it.name}</button>}
-                  {it.location === "SHARED_WITH_ME" && <span className="shrink-0 rounded bg-secondary px-1.5 text-[11px] text-muted-foreground">shared</span>}</div></td>
+                  {it.location === "SHARED_WITH_ME" && <span className="shrink-0 rounded bg-secondary px-1.5 text-[11px] text-muted-foreground">shared</span>}</div>
+                  {flat && it.parent && <button className="ml-7 block max-w-full truncate text-left text-xs text-muted-foreground hover:text-foreground hover:underline" title={`Open the folder “${it.parent.name}”`}
+                    onClick={() => { setAllFiles(false); setStack([{ accountId: it.account_id, id: it.parent!.id, name: it.parent!.name }]); }}>in {it.parent.name}</button>}</td>
                 <td data-col="account" className="hidden px-2 py-2 md:table-cell"><AccountChip id={it.account_id} email={it.account_email} /></td>
                 <td data-col="modified" className="hidden px-2 py-2 text-muted-foreground sm:table-cell"><span className="block truncate">{when(it.modified_time)}</span></td>
                 <td data-col="size" className="px-2 py-2 text-right text-muted-foreground"><span className="block truncate">{it.is_folder ? "—" : bytes(it.size)}</span></td>
@@ -304,6 +350,7 @@ function DriveBrowser() {
         Shared-drive trash and files owned by other people aren't affected.</ConfirmDialog>
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       {openFileDialog}
+      {ctx.node}
       <ShareDialog item={sharing} onClose={() => setSharing(null)} />
       <MoveAccountDialog item={movingAcross} onClose={() => setMovingAcross(null)} />
       <VirtualFolderPicker open={!!addTo} title="Add to virtual folder" confirmLabel="Add" folders={vtree.data ?? []} onClose={() => setAddTo(null)}

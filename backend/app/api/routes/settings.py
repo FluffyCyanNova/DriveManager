@@ -41,35 +41,53 @@ def runtime():
             "timezone": s.tz}
 
 
-# ---------------- sidebar order (shared by every device) ----------------
-# Dashboard is pinned at the top and isn't part of the order.
-SIDEBAR_DEFAULT = ["files", "trash", "virtual", "uploads", "accounts", "activity", "analytics", "settings"]
-SIDEBAR_KEY = "ui.sidebar_order"
+# ---------------- sidebar order + pins (shared by every device) ----------------
+# Pinned items are shown in a group at the top, in pin order, and can't be dragged. Dashboard is pinned by default.
+SIDEBAR_DEFAULT = ["dashboard", "files", "trash", "virtual", "uploads", "accounts", "activity", "analytics", "settings"]
+SIDEBAR_DEFAULT_PINNED = ["dashboard"]
+SIDEBAR_KEY = "ui.sidebar"
+SIDEBAR_OLD_KEY = "ui.sidebar_order"          # before pins existed: a plain list without "dashboard"
 
 
 class SidebarBody(BaseModel):
     order: list[str] = Field(max_length=50)
+    pinned: list[str] = Field(default_factory=list, max_length=50)
 
 
-def _sidebar(saved: list[str] | None) -> dict:
-    order = [k for k in dict.fromkeys(saved or []) if k in SIDEBAR_DEFAULT]
-    order += [k for k in SIDEBAR_DEFAULT if k not in order]     # items added in later versions appear at their default place (end)
-    return {"order": order, "default": SIDEBAR_DEFAULT, "customized": order != SIDEBAR_DEFAULT}
+def _clean(keys) -> list[str]:
+    return [k for k in dict.fromkeys(keys or []) if k in SIDEBAR_DEFAULT]
+
+
+def _sidebar(saved: dict | None) -> dict:
+    saved = saved or {}
+    order = _clean(saved.get("order"))
+    order += [k for k in SIDEBAR_DEFAULT if k not in order]     # items added in later versions appear at their default place
+    pinned = _clean(saved["pinned"]) if "pinned" in saved else list(SIDEBAR_DEFAULT_PINNED)
+    return {"order": order, "pinned": pinned, "default": SIDEBAR_DEFAULT, "default_pinned": SIDEBAR_DEFAULT_PINNED,
+            "customized": order != SIDEBAR_DEFAULT or pinned != SIDEBAR_DEFAULT_PINNED}
+
+
+def _load_sidebar(db: Session) -> dict:
+    saved = get_setting(db, SIDEBAR_KEY)
+    if saved is None and (old := get_setting(db, SIDEBAR_OLD_KEY)):
+        saved = {"order": ["dashboard", *old]}
+    return _sidebar(saved)
 
 
 @router.get("/sidebar")
 def get_sidebar(db: Session = Depends(get_db)):
-    return _sidebar(get_setting(db, SIDEBAR_KEY))
+    return _load_sidebar(db)
 
 
 @router.put("/sidebar")
 def put_sidebar(body: SidebarBody, db: Session = Depends(get_db)):
-    state = _sidebar(body.order)
-    set_setting(db, SIDEBAR_KEY, state["order"])
+    state = _sidebar({"order": body.order, "pinned": body.pinned})
+    set_setting(db, SIDEBAR_KEY, {"order": state["order"], "pinned": state["pinned"]})
     return state
 
 
 @router.delete("/sidebar")
 def reset_sidebar(db: Session = Depends(get_db)):
     set_setting(db, SIDEBAR_KEY, None)
+    set_setting(db, SIDEBAR_OLD_KEY, None)
     return _sidebar(None)

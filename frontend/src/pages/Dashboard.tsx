@@ -53,6 +53,13 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ))}
+        {/* Odd number of accounts: fill the empty spot in the two-column grid (desktop only) instead of leaving a blank gap. */}
+        {list.length % 2 === 1 && (
+          <Link to="/accounts" aria-label="Connect another account"
+            className="group hidden items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground md:flex"
+            style={{ backgroundImage: "repeating-linear-gradient(135deg, hsl(var(--muted-foreground) / 0.10) 0 1px, transparent 1px 12px)" }}>
+            <span className="flex items-center gap-2 rounded-md bg-background/80 px-3 py-1.5"><Plus className="h-4 w-4" />Connect another account</span>
+          </Link>)}
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">

@@ -38,15 +38,21 @@ def list_files(account_id: str | None = None, location: str | None = Query(None,
                parent_id: str | None = None, q: str | None = Query(None, max_length=200), type: str | None = None,
                modified_after: datetime | None = None, modified_before: datetime | None = None,
                min_size: int | None = Query(None, ge=0), max_size: int | None = Query(None, ge=0),
-               trashed: bool = False, folders_only: bool = False,
+               trashed: bool = False, folders_only: bool = False, all_files: bool = False,
                sort: str = Query("name", pattern="^(name|modified|size|type|account)$"), direction: str = Query("asc", pattern="^(asc|desc)$"),
                folders: str = Query("first", pattern="^(first|last|mixed)$"),
                page: int = Query(1, ge=1), page_size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
     fq = frepo.FileQuery(account_id=account_id, location=location, parent_id=parent_id, q=q, type=type, modified_after=modified_after,
                          modified_before=modified_before, min_size=min_size, max_size=max_size, trashed=trashed,
-                         folders_only=folders_only, sort=sort, direction=direction, folders=folders, page=page, page_size=page_size)
+                         folders_only=folders_only, all_files=all_files, sort=sort, direction=direction, folders=folders,
+                         page=page, page_size=page_size)
     rows, total = frepo.run(db, fq)
-    return {"items": [frepo.to_dict(f, e) for f, e in rows], "total": total, "page": page, "page_size": page_size}
+    items = [frepo.to_dict(f, e) for f, e in rows]
+    if all_files:                       # flat view: say which folder each file is in
+        parents = frepo.parents_for(db, [f for f, _ in rows])
+        for it, (f, _) in zip(items, rows):
+            it["parent"] = parents.get(f.id)
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/drives")
