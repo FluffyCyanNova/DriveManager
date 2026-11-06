@@ -13,12 +13,14 @@ import { api } from "@/services/api";
 import { toast } from "@/stores/ui";
 import type { AllocationSettings, Rule } from "@/types";
 import { ago, bytes } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
 const rid = () => Math.random().toString(36).slice(2, 12);
 type Target = { kind: "rule"; id: string; accountId: string } | { kind: "default"; accountId: string } | null;
 
 export default function SettingsPage() {
+  const m = useMask();
   const qc = useQueryClient();
   const accounts = useAccounts();
   const runtime = useRuntime();
@@ -35,7 +37,7 @@ export default function SettingsPage() {
   const order = [...draft.priority.filter((id) => accs.some((a) => a.id === id)), ...accs.map((a) => a.id).filter((id) => !draft.priority.includes(id))];
   const move = (i: number, d: -1 | 1) => { const o = [...order]; [o[i], o[i + d]] = [o[i + d], o[i]]; setDraft({ ...draft, priority: o }); };
   const setRule = (id: string, p: Partial<Rule>) => setDraft({ ...draft, rules: draft.rules.map((r) => (r.id === id ? { ...r, ...p } : r)) });
-  const email = (id: string) => accs.find((a) => a.id === id)?.email ?? "removed account";
+  const email = (id: string) => m.email(accs.find((a) => a.id === id)?.email) ?? "removed account";
 
   return (
     <>
@@ -70,7 +72,7 @@ export default function SettingsPage() {
                       <div className="space-y-1"><Label className="text-xs text-muted-foreground">Type prefixes</Label><Input placeholder="video/, image/" value={r.mime_prefixes.join(", ")} onChange={(e) => setRule(r.id, { mime_prefixes: csv(e.target.value) })} /></div>
                       <div className="space-y-1"><Label className="text-xs text-muted-foreground">Name contains</Label><Input placeholder="invoice" value={r.name_contains ?? ""} onChange={(e) => setRule(r.id, { name_contains: e.target.value || null })} /></div></div>
                     <div className="flex flex-wrap items-center gap-3 text-sm"><span className="text-muted-foreground">Send matching files to</span>
-                      <Select aria-label="Target account" className="w-60" value={r.account_id} onChange={(e) => setRule(r.id, { account_id: e.target.value, folder_id: null, folder_name: null })}>{accs.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}</Select>
+                      <Select aria-label="Target account" className="w-60" value={r.account_id} onChange={(e) => setRule(r.id, { account_id: e.target.value, folder_id: null, folder_name: null })}>{accs.map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}</option>)}</Select>
                       <Button size="sm" variant="outline" onClick={() => setTarget({ kind: "rule", id: r.id, accountId: r.account_id })}><FolderOpen className="h-3.5 w-3.5" />{r.folder_name ?? "My Drive root"}</Button></div>
                     {!r.extensions.length && !r.mime_prefixes.length && !r.name_contains && <p className="text-xs text-warning">This rule has no conditions yet, so it won't match anything.</p>}
                   </li>))}</ul>)}</div>

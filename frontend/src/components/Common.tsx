@@ -6,6 +6,7 @@ import { Input, Label } from "@/components/ui/input";
 import { ApiError } from "@/services/api";
 import { toast } from "@/stores/ui";
 import { accountColor } from "@/utils/accountColor";
+import { useMask } from "@/utils/privacy";
 
 export const Spinner = ({ label = "Loading" }: { label?: string }) => (
   <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin" />{label}…</div>
@@ -35,10 +36,11 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function AccountChip({ id, email }: { id: string; email: string | null | undefined }) {
+  const m = useMask();
   return (
-    <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground" title={email ?? undefined}>
+    <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground" title={m.email(email) ?? undefined}>
       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accountColor(id) }} />
-      <span className="truncate">{email ?? "Removed account"}</span>
+      <span className="truncate">{m.email(email) ?? "Removed account"}</span>
     </span>
   );
 }

@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/input";
 import { api } from "@/services/api";
 import type { ActivityItem } from "@/types";
 import { when } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 const LABELS: Record<string, string> = {
   upload: "Uploaded", upload_failed: "Upload failed", upload_cancelled: "Upload cancelled", rename: "Renamed", move: "Moved", trash: "Moved to trash",
@@ -23,6 +24,7 @@ export function describe(e: ActivityItem): string {
 }
 
 export default function Activity() {
+  const m = useMask();
   const [type, setType] = useState("");
   const q = useInfiniteQuery({
     queryKey: ["activity", "list", type], initialPageParam: 0 as number,
@@ -40,7 +42,7 @@ export default function Activity() {
         {q.isLoading ? <Spinner /> : items.length === 0 ? <EmptyState title="Nothing here yet">Uploads, renames, moves and account changes will be listed here.</EmptyState> : (
           <ul className="divide-y">{items.map((e) => (
             <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
-              <div className="min-w-0"><p className="truncate">{describe(e)}</p>{e.account_id !== undefined && <AccountChip id={e.account_id ?? "x"} email={e.account_email} />}</div>
+              <div className="min-w-0"><p className="truncate">{m.text(describe(e))}</p>{e.account_id !== undefined && <AccountChip id={e.account_id ?? "x"} email={e.account_email} />}</div>
               <time className="text-xs text-muted-foreground" dateTime={e.created_at}>{when(e.created_at)}</time>
             </li>))}</ul>)}
         {q.hasNextPage && <div className="border-t p-3 text-center"><Button variant="outline" size="sm" onClick={() => q.fetchNextPage()} disabled={q.isFetchingNextPage}>Load older</Button></div>}

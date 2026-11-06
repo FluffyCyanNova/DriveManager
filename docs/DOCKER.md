@@ -27,7 +27,7 @@ The backend and worker are never reachable from your network directly. Only ngin
 | Start | `scripts\start.ps1` |
 | Stop (data kept) | `scripts\stop.ps1` |
 | Live logs | `scripts\logs.ps1` or `scripts\logs.ps1 worker` |
-| Update after changing files | `scripts\update.ps1` (backs up first, rebuilds, migrates) |
+| Update to the latest version | `git switch main`, `git pull`, then `scripts\update.ps1` (backs up first, rebuilds, migrates). The script builds from the files in this folder, so pull first. |
 | Back up | `scripts\backup.ps1` |
 | Restore | `scripts\restore.ps1 -File backups\drivemanager-backup-XXXX.zip` |
 

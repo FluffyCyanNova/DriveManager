@@ -18,6 +18,7 @@ import type { DriveItem, FilePage, SharedDrive, VFolder } from "@/types";
 import { cn } from "@/utils/cn";
 import { bytes, when } from "@/utils/format";
 import VirtualBrowser from "./VirtualBrowser";
+import { useMask } from "@/utils/privacy";
 
 type Loc = "my_drive" | "shared_with_me" | "shared_drive" | "trash";
 interface Crumb { accountId: string; id: string; name: string }
@@ -55,6 +56,7 @@ export default function Files() {
 }
 
 function DriveBrowser() {
+  const m = useMask();
   const qc = useQueryClient();
   const accounts = useAccounts();
   const [accountId, setAccountId] = useState("");
@@ -203,7 +205,7 @@ function DriveBrowser() {
       {/* Filters on their own row; w-auto lets each select size to its longest option so labels never get cut off. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select aria-label="Account" className="w-auto max-w-xs" value={accountId} onChange={(e) => { setAccountId(e.target.value); setStack([]); setPage(1); }}>
-          <option value="">All accounts</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}</Select>
+          <option value="">All accounts</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}</option>)}</Select>
         <Select aria-label="File type" className="w-auto" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
           <option value="">Any type</option><option value="folder">Folders</option><option value="document">Documents</option><option value="spreadsheet">Spreadsheets</option><option value="presentation">Presentations</option><option value="pdf">PDFs</option><option value="image">Images</option><option value="video">Video</option><option value="audio">Audio</option><option value="archive">Archives</option><option value="other">Other</option></Select>
         <Select aria-label="Sort" className="w-auto" value={`${sort}:${dir}`} onChange={(e) => { const [s, d] = e.target.value.split(":"); setSort(s); setDir(d as "asc" | "desc"); setPage(1); }}>
@@ -239,7 +241,7 @@ function DriveBrowser() {
         {sharedRoot ? (
           drives.isLoading ? <Spinner /> : (drives.data ?? []).filter((d) => !accountId || d.account_id === accountId).length === 0 ? <EmptyState icon={<Users className="h-8 w-8" />} title="No shared drives">None of your connected accounts are members of a shared drive.</EmptyState> : (
             <ul className="divide-y">{drives.data!.filter((d) => !accountId || d.account_id === accountId).map((d) => (
-              <li key={d.account_id + d.id}><button onClick={() => setStack([{ accountId: d.account_id, id: d.id, name: d.name }])} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-muted"><Users className="h-4 w-4 text-primary" /><span className="flex-1 font-medium">{d.name}</span><AccountChip id={d.account_id} email={d.account_email} /></button></li>))}</ul>)
+              <li key={d.account_id + d.id}><button onClick={() => setStack([{ accountId: d.account_id, id: d.id, name: d.name }])} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-muted"><Users className="h-4 w-4 text-primary" /><span className="flex-1 font-medium">{d.name}</span><AccountChip id={d.account_id} email={m.email(d.account_email)} /></button></li>))}</ul>)
         ) : files.isLoading ? <Spinner /> : items.length === 0 ? (
           <EmptyState icon={<FolderTree className="h-8 w-8" />} title={q ? "No matches" : loc === "trash" ? "Trash is empty" : (accounts.data ?? []).length === 0 ? "No accounts connected" : "Nothing in this folder"}>
             {!q && (accounts.data ?? []).some((a) => !a.initial_scan_complete) ? "Some accounts are still being indexed for the first time. Files appear as the scan progresses." : undefined}</EmptyState>
@@ -283,7 +285,7 @@ function DriveBrowser() {
         {bulkDeleting?.some((i) => i.is_folder) ? " Everything you own inside the selected folders is deleted with them." : ""} This can't be undone.</ConfirmDialog>
       <ConfirmDialog open={emptying} onOpenChange={setEmptying} title="Empty trash?" confirmLabel="Empty trash" danger busy={emptyTrash.isPending}
         onConfirm={() => emptyTrash.mutate(emptyTargets.map((a) => a.id))}>
-        Everything in the Google Drive trash of {emptyTargets.length === 1 ? emptyTargets[0].email : `all ${emptyTargets.length} connected accounts`} will be deleted permanently. This can't be undone.
+        Everything in the Google Drive trash of {emptyTargets.length === 1 ? m.email(emptyTargets[0].email) : `all ${emptyTargets.length} connected accounts`} will be deleted permanently. This can't be undone.
         Shared-drive trash and files owned by other people aren't affected.</ConfirmDialog>
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       <VirtualFolderPicker open={!!addTo} title="Add to virtual folder" confirmLabel="Add" folders={vtree.data ?? []} onClose={() => setAddTo(null)}

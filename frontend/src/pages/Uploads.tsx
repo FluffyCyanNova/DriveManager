@@ -15,6 +15,7 @@ import { toast } from "@/stores/ui";
 import type { UploadJob, VFolder } from "@/types";
 import { cn } from "@/utils/cn";
 import { bytes } from "@/utils/format";
+import { useMask } from "@/utils/privacy";
 
 interface Params { mode: "MANUAL" | "AUTO"; accountId: string; folder: PickedFolder | null; virtualFolderId: string }
 interface Local { key: string; file: File; params: Params; sent: number; status: "waiting" | "sending" | "error"; error?: string }
@@ -23,6 +24,7 @@ const STATE: Record<string, string> = { QUEUED: "Waiting for the worker", VALIDA
 const SWITCHABLE = ["INSUFFICIENT_SPACE", "RULE_ACCOUNT_FULL", "NO_ACCOUNT_HAS_SPACE", "DESTINATION_INVALID", "ACCOUNT_NEEDS_REAUTH", "ACCOUNT_REMOVED", "RULE_ACCOUNT_MISSING"];
 
 export default function Uploads() {
+  const m = useMask();
   const qc = useQueryClient();
   const accounts = useAccounts();
   const active = (accounts.data ?? []).filter((a) => a.status === "ACTIVE");
@@ -103,7 +105,7 @@ export default function Uploads() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5"><Label htmlFor="acct">Account</Label>
                 <Select id="acct" value={effectiveAccount} onChange={(e) => { setAccountId(e.target.value); setFolder(null); }}>
-                  {active.map((a) => <option key={a.id} value={a.id}>{a.email}{a.quota?.free != null ? ` — ${bytes(a.quota.free)} free` : ""}</option>)}</Select></div>
+                  {active.map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}{a.quota?.free != null ? ` — ${bytes(a.quota.free)} free` : ""}</option>)}</Select></div>
               <div className="space-y-1.5"><Label>Folder</Label>
                 <Button variant="outline" className="w-full justify-start" onClick={() => setPickFolder(true)} disabled={!effectiveAccount}><FolderOpen className="h-4 w-4" /><span className="truncate">{folder?.name ?? "My Drive (root)"}</span></Button></div>
             </div>)}
@@ -153,9 +155,9 @@ export default function Uploads() {
                   </div>
                 </div>
                 {busy && <div><Progress value={j.progress} /><p className="mt-1 text-xs text-muted-foreground">{bytes(j.bytes_uploaded)} of {bytes(j.size)} ({Math.round(j.progress)}%)</p></div>}
-                {j.allocation_reason && j.state !== "FAILED" && <p className="text-xs text-muted-foreground">Why this account: {j.allocation_reason}</p>}
+                {j.allocation_reason && j.state !== "FAILED" && <p className="text-xs text-muted-foreground">Why this account: {m.text(j.allocation_reason)}</p>}
                 {j.state === "FAILED" && (
-                  <div className="rounded-md bg-destructive/10 p-3"><p className="text-destructive">{j.error_message}</p>
+                  <div className="rounded-md bg-destructive/10 p-3"><p className="text-destructive">{m.text(j.error_message)}</p>
                     {j.error_code && SWITCHABLE.includes(j.error_code) && <Button size="sm" className="mt-2" variant="outline" onClick={() => setRetrying(j)}>Retry on another account…</Button>}</div>)}
               </li>);
           })}</ul>)}
@@ -170,6 +172,7 @@ export default function Uploads() {
 }
 
 function RetryDialog({ job, accounts, onClose, onGo, busy }: { job: UploadJob | null; accounts: { id: string; email: string; quota: { free: number | null } | null }[]; onClose: () => void; onGo: (id: string, account: string) => void; busy: boolean }) {
+  const m = useMask();
   const [sel, setSel] = useState("");
   const options = accounts.filter((a) => a.id !== job?.account_id);
   const value = sel || options[0]?.id || "";
@@ -177,7 +180,7 @@ function RetryDialog({ job, accounts, onClose, onGo, busy }: { job: UploadJob | 
     <Dialog open={!!job} onOpenChange={(o) => !o && onClose()} title="Retry on another account" description={job ? <>“{job.filename}” ({bytes(job.size)}) is still safely stored on your server. Choose where it should go instead. The destination folder will be reset to My Drive.</> : ""}>
       {options.length === 0 ? <p className="text-sm text-muted-foreground">There is no other connected account.</p> : (
         <div className="space-y-4"><Select aria-label="Account" value={value} onChange={(e) => setSel(e.target.value)}>
-          {options.map((a) => <option key={a.id} value={a.id}>{a.email}{a.quota?.free != null ? ` — ${bytes(a.quota.free)} free` : ""}</option>)}</Select>
+          {options.map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}{a.quota?.free != null ? ` — ${bytes(a.quota.free)} free` : ""}</option>)}</Select>
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={busy || !value} onClick={() => job && onGo(job.id, value)}>Retry upload</Button></div></div>)}
     </Dialog>
   );
