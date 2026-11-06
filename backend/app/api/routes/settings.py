@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -38,7 +40,9 @@ def runtime():
             "upload_concurrency": s.upload_concurrency, "upload_chunk_mb": s.upload_chunk_mb,
             "staging_retention_hours": s.staging_retention_hours, "session_ttl_hours": s.session_ttl_hours,
             "google_configured": s.google_configured, "redirect_uri": s.google_redirect_uri, "tls_cookie_secure": s.cookie_secure,
-            "timezone": s.tz}
+            "timezone": s.tz,
+            # build info for Settings > About (set at image build time; empty when running outside Docker)
+            "commit": os.environ.get("APP_COMMIT") or None, "build_date": os.environ.get("APP_BUILD_DATE") or None}
 
 
 # ---------------- sidebar order + pins (shared by every device) ----------------

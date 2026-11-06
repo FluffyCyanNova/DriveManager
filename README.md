@@ -74,7 +74,7 @@ git pull
 scripts\update.ps1    # backs up, rebuilds the images, restarts; database migrations run automatically
 ```
 
-Then reload the app in your browser. Your data lives in Docker volumes and is not touched by an update.
+Then reload the app in your browser. **Settings → About** shows which build you're running: the git commit, linked to GitHub, and the build time. It also has links to the repository, the docs, the license and *Report a problem*. Your data lives in Docker volumes and is not touched by an update.
 
 ## Logs
 

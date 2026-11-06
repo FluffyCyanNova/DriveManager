@@ -7,6 +7,9 @@ services:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
+      args:   # shown in Settings > About; set by scripts\start.ps1 / update.ps1
+        GIT_COMMIT: ${DM_COMMIT:-unknown}
+        BUILD_DATE: ${DM_BUILD_DATE:-}
     image: drivemanager-backend:local
     env_file: [.env]
     environment:

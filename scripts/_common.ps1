@@ -46,3 +46,18 @@ function New-RandomBytes([int]$Count) {
 function Test-Placeholder([string]$Value) { return ([string]::IsNullOrWhiteSpace($Value) -or $Value -like 'replace_with*' -or $Value -like 'your_*') }
 
 function Get-AppPort { $p = Get-EnvValue 'APP_PORT'; if ($p) { return $p } else { return '8000' } }
+
+# Build info shown in Settings > About: the git commit and time of this build (passed to docker compose as build args).
+function Set-BuildInfo {
+    $commit = 'unknown'
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $c = git rev-parse --short HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $c) {
+            $commit = $c.Trim()
+            git diff --quiet HEAD 2>$null
+            if ($LASTEXITCODE -ne 0) { $commit = "$commit+changes" }
+        }
+    }
+    $env:DM_COMMIT = $commit
+    $env:DM_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}

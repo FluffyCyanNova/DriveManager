@@ -5,6 +5,7 @@ if ((Test-Placeholder (Get-EnvValue 'APP_ENCRYPTION_KEY')) -or (Test-Placeholder
     Fail "Setup is incomplete (keys or password missing). Run scripts\setup.ps1 first."
 }
 Info "Starting DriveManager (the first start builds the images and can take a few minutes)..."
+Set-BuildInfo
 docker compose up -d --build
 if ($LASTEXITCODE -ne 0) { Fail "docker compose failed to start. Run scripts\logs.ps1 to see why." }
 $port = Get-AppPort

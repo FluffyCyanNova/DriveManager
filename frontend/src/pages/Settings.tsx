@@ -98,6 +98,7 @@ export default function SettingsPage() {
             <Row k="Free staging disk" v={bytes(health.data?.staging_free_bytes)} />
             <Row k="Failed uploads kept for" v={`${runtime.data?.staging_retention_hours} h`} />
           </dl></CardContent></Card>
+        <AboutCard version={runtime.data?.version} commit={runtime.data?.commit} buildDate={runtime.data?.build_date} />
       </div>
 
       <Dialog open={!!target} onOpenChange={(o) => !o && setTarget(null)} title="Choose folder" description={target ? `Folder in ${email(target.accountId)}` : ""}>
@@ -155,6 +156,51 @@ function SidebarCard() {
           <Button variant="outline" disabled={sb.reset.isPending} onClick={() => sb.reset.mutate(undefined, { onSuccess: () => { useSidebarWidth.getState().reset(); toast.success("Sidebar reset to the default order, pins and width."); } })}>Reset order, pins and width</Button>
           <span className="text-sm text-muted-foreground">{sb.state.customized ? "Custom layout in use." : "Default layout (Dashboard pinned)."}</span>
         </div>
+      </CardContent></Card>
+  );
+}
+
+const REPO = "https://github.com/FluffyCyanNova/DriveManager";
+
+function AboutCard({ version, commit, buildDate }: { version?: string; commit?: string | null; buildDate?: string | null }) {
+  const sha = commit && commit !== "unknown" ? commit.replace("+changes", "") : null;
+  const built = buildDate ? new Date(buildDate).toLocaleString() : null;
+  // "Report a problem" opens a new GitHub issue with the version and browser already filled in.
+  const issueBody = `
+
+---
+DriveManager ${version ?? "?"}${commit ? ` (${commit})` : ""}${buildDate ? `, built ${buildDate}` : ""}
+Browser: ${navigator.userAgent}`;
+  const issueUrl = `${REPO}/issues/new?${new URLSearchParams({ body: issueBody })}`;
+  const link = "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-accent";
+  return (
+    <Card><CardHeader><CardTitle>About</CardTitle></CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <div className="flex items-start gap-3">
+          <img src="/favicon.svg" alt="" className="h-10 w-10 shrink-0" />
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-base font-semibold">DriveManager <span className="font-normal text-muted-foreground">· version {version ?? "…"}</span></p>
+            <p className="text-muted-foreground">A self-hosted dashboard for managing several Google Drive accounts in one place.</p>
+            <p className="text-muted-foreground">Made by <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@FluffyCyanNova</a></p>
+          </div>
+        </div>
+        <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[auto_1fr]">
+          <dt className="text-muted-foreground">Build</dt>
+          <dd>{sha ? <a href={`${REPO}/commit/${sha}`} target="_blank" rel="noopener noreferrer" className="font-mono text-primary hover:underline">{commit}</a> : <span className="text-muted-foreground">Not recorded (started without the scripts)</span>}
+            {commit?.endsWith("+changes") && <span className="ml-2 text-xs text-muted-foreground">built with uncommitted changes</span>}</dd>
+          <dt className="text-muted-foreground">Built</dt>
+          <dd>{built ?? <span className="text-muted-foreground">Not recorded</span>}</dd>
+        </dl>
+        <div className="flex flex-wrap gap-2">
+          <a className={link} href={REPO} target="_blank" rel="noopener noreferrer">GitHub repository</a>
+          <a className={link} href={issueUrl} target="_blank" rel="noopener noreferrer">Report a problem</a>
+          <a className={link} href={`${REPO}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer">MIT License</a>
+        </div>
+        <p className="text-muted-foreground">Docs:{" "}
+          <a className="text-primary hover:underline" href={`${REPO}#readme`} target="_blank" rel="noopener noreferrer">README</a> ·{" "}
+          <a className="text-primary hover:underline" href={`${REPO}/blob/main/docs/GOOGLE_OAUTH.md`} target="_blank" rel="noopener noreferrer">Google setup</a> ·{" "}
+          <a className="text-primary hover:underline" href={`${REPO}/blob/main/docs/DOCKER.md`} target="_blank" rel="noopener noreferrer">Running with Docker</a></p>
+        <p className="text-xs text-muted-foreground">Built with FastAPI, React and the Google Drive API · Made possible with Claude</p>
       </CardContent></Card>
   );
 }
