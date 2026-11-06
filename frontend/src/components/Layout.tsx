@@ -1,5 +1,5 @@
-import { Activity, AlertTriangle, BarChart3, FolderTree, LayoutDashboard, LogOut, Moon, Settings, Sun, UploadCloud, Users } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Activity, AlertTriangle, BarChart3, FolderTree, LayoutDashboard, Link2, LogOut, Moon, Settings, Sun, Trash2, UploadCloud, Users } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/Toaster";
 import { useAccounts, useHealth } from "@/hooks/queries";
 import { useEvents } from "@/hooks/useEvents";
@@ -8,9 +8,12 @@ import { useAuth } from "@/stores/auth";
 import { useUI } from "@/stores/ui";
 import { cn } from "@/utils/cn";
 
-const NAV = [
+// Files has sub-entries that open the Files page on a specific view (?view=…); `view` decides which one is highlighted.
+const NAV: { to: string; label: string; icon: typeof FolderTree; end?: boolean; view?: string | null; sub?: boolean }[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/files", label: "Files", icon: FolderTree },
+  { to: "/files", label: "Files", icon: FolderTree, view: null },
+  { to: "/files?view=trash", label: "Trash", icon: Trash2, view: "trash", sub: true },
+  { to: "/files?view=virtual", label: "Virtual folders", icon: Link2, view: "virtual", sub: true },
   { to: "/uploads", label: "Uploads", icon: UploadCloud },
   { to: "/accounts", label: "Accounts", icon: Users },
   { to: "/activity", label: "Activity", icon: Activity },
@@ -25,6 +28,10 @@ export default function Layout() {
   const accounts = useAccounts();
   const health = useHealth();
   const needAuth = (accounts.data ?? []).filter((a) => a.status === "NEEDS_REAUTH");
+  const location = useLocation();
+  const currentView = location.pathname === "/files" ? new URLSearchParams(location.search).get("view") : undefined;
+  const itemCls = (active: boolean, sub?: boolean) => cn("flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+    sub && "md:ml-4 md:py-1.5", active && "bg-accent text-accent-foreground");
   const logout = async () => { try { await api.post("/api/auth/logout"); } finally { auth.set({ status: "out" }); } };
 
   return (
@@ -39,8 +46,13 @@ export default function Layout() {
           </div>
         </div>
         <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible md:pb-0">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => cn("flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground", isActive && "bg-accent text-accent-foreground")}>
+          {NAV.map(({ to, label, icon: Icon, end, view, sub }) => view !== undefined ? (
+            <Link key={to} to={to} aria-current={currentView !== undefined && (currentView ?? null) === view ? "page" : undefined}
+              className={itemCls(currentView !== undefined && (currentView ?? null) === view, sub)}>
+              <Icon className="h-4 w-4" />{label}
+            </Link>
+          ) : (
+            <NavLink key={to} to={to} end={end} className={({ isActive }) => itemCls(isActive)}>
               <Icon className="h-4 w-4" />{label}
             </NavLink>
           ))}

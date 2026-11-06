@@ -129,3 +129,18 @@ def test_sort_by_account_and_api_params(authed, db, indexed):
     r = authed.get("/api/files", params={"location": "my_drive", "sort": "account", "folders": "mixed"}).json()
     assert [i["name"] for i in r["items"]] == ["Projects", "root.txt", "aaa.txt"]   # by account, then name
     assert authed.get("/api/files", params={"folders": "sideways"}).status_code == 422
+
+
+def test_permanent_delete_of_folder_removes_owned_contents_from_index(authed, db, indexed, monkeypatch):
+    from app.integrations.google_drive import files as gfiles
+    monkeypatch.setattr(gfiles, "delete_permanently", lambda c, fid: None)
+    sync.upsert_files(db, indexed, [meta("sub", "Sub", ["f1"], FOLDER, size=None), meta("deep", "deep.txt", ["sub"]),
+                                    meta("theirs", "theirs.txt", ["f1"], owned=False)])
+    r = authed.delete(f"/api/files/{indexed.id}/f1", params={"permanent": "true", "confirm": "true"})
+    assert r.status_code == 200
+    db.expire_all()
+    from app.database.models import DriveFile
+    from sqlalchemy import select
+    status = dict(db.execute(select(DriveFile.google_file_id, DriveFile.status)).all())
+    assert [status[k] for k in ("f1", "c1", "img", "sub", "deep")] == ["REMOVED"] * 5
+    assert status["theirs"] == "ACTIVE" and status["r1"] == "ACTIVE"

@@ -38,7 +38,10 @@ const readFolders = (): FolderPlacement => {
 };
 
 export default function Files() {
-  const [tab, setTab] = useState<"drive" | "virtual">("drive");
+  // The view lives in the URL (?view=trash|virtual) so the sidebar's Trash and Virtual folders links can open it directly.
+  const [search, setSearch] = useSearchParams();
+  const tab = search.get("view") === "virtual" ? "virtual" : "drive";
+  const setTab = (t: "drive" | "virtual") => setSearch(t === "virtual" ? { view: "virtual" } : {});
   return (
     <>
       <PageHeader title="Files" description="Browse every connected account in one place. Changes are made in Google Drive itself." />
@@ -55,8 +58,9 @@ function DriveBrowser() {
   const qc = useQueryClient();
   const accounts = useAccounts();
   const [accountId, setAccountId] = useState("");
-  const [search] = useSearchParams();
-  const [loc, setLoc] = useState<Loc>(search.get("view") === "trash" ? "trash" : "my_drive");
+  const [search, setSearch] = useSearchParams();
+  const [baseLoc, setBaseLoc] = useState<Exclude<Loc, "trash">>("my_drive");
+  const loc: Loc = search.get("view") === "trash" ? "trash" : baseLoc;
   const [stack, setStack] = useState<Crumb[]>([]);
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
@@ -166,7 +170,13 @@ function DriveBrowser() {
   const canMkdir = loc !== "trash" && loc !== "shared_with_me" && (top ? true : !!accountId && loc === "my_drive");
   const selected = items.filter((i) => sel.has(i.id));
   const emptyTargets = (accounts.data ?? []).filter((a) => a.status === "ACTIVE" && (!accountId || a.id === accountId));
-  const go = (l: Loc) => { setLoc(l); setStack([]); setPage(1); setQInput(""); };
+  const go = (l: Loc) => {
+    if (l === "trash") setSearch({ view: "trash" });
+    else { setBaseLoc(l); if (search.get("view")) setSearch({}); }
+    setStack([]); setPage(1); setQInput("");
+  };
+  // Also reset when the view changes from outside (sidebar links, browser back/forward).
+  useEffect(() => { setStack([]); setPage(1); }, [loc]);
   const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { setQInput(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
 
   const menu = (it: DriveItem) => [
@@ -177,26 +187,29 @@ function DriveBrowser() {
     { label: "Add to virtual folder", icon: <Link2 className="h-4 w-4" />, hidden: it.trashed, onSelect: () => setAddTo([it]) },
     { label: "Move to trash", icon: <Trash2 className="h-4 w-4" />, hidden: it.trashed || !it.can.trash, onSelect: () => trash.mutate(it) },
     { label: "Restore", icon: <RotateCcw className="h-4 w-4" />, hidden: !it.trashed || !it.can.untrash, onSelect: () => restore.mutate(it) },
-    { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, hidden: !it.trashed || !it.can.delete, onSelect: () => setDeleting(it) },
+    { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, hidden: !it.can.delete, onSelect: () => setDeleting(it) },
   ];
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label="Location" className="inline-flex rounded-md border bg-card p-0.5">
           {([["my_drive", "My Drive"], ["shared_with_me", "Shared with me"], ["shared_drive", "Shared drives"], ["trash", "Trash"]] as const).map(([k, t]) => (
             <button key={k} role="tab" aria-selected={loc === k} onClick={() => go(k)} className={cn("rounded px-3 py-1 text-sm", loc === k ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground hover:text-foreground")}>{t}</button>))}
         </div>
-        <Select aria-label="Account" className="w-52" value={accountId} onChange={(e) => { setAccountId(e.target.value); setStack([]); setPage(1); }}>
-          <option value="">All accounts</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}</Select>
         <div className="relative min-w-48 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => setQInput(e.target.value)} /></div>
-        <Select aria-label="File type" className="w-36" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
-          <option value="">Any type</option><option value="folder">Folders</option><option value="document">Documents</option><option value="spreadsheet">Spreadsheets</option><option value="presentation">Presentations</option><option value="pdf">PDFs</option><option value="image">Images</option><option value="video">Video</option><option value="audio">Audio</option><option value="archive">Archives</option><option value="other">Other</option></Select>
-        <Select aria-label="Sort" className="w-36" value={`${sort}:${dir}`} onChange={(e) => { const [s, d] = e.target.value.split(":"); setSort(s); setDir(d as "asc" | "desc"); setPage(1); }}>
-          <option value="name:asc">Name A–Z</option><option value="name:desc">Name Z–A</option><option value="account:asc">Account A–Z</option><option value="account:desc">Account Z–A</option><option value="modified:desc">Newest first</option><option value="modified:asc">Oldest first</option><option value="size:desc">Largest first</option><option value="size:asc">Smallest first</option></Select>
-        <Select aria-label="Folder placement" className="w-36" value={folders} onChange={(e) => { setFolders(e.target.value as FolderPlacement); setPage(1); }}>
-          <option value="first">Folders first</option><option value="last">Files first</option><option value="mixed">Mixed together</option></Select>
         {canMkdir && <Button variant="outline" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
+      </div>
+      {/* Filters on their own row; w-auto lets each select size to its longest option so labels never get cut off. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Select aria-label="Account" className="w-auto max-w-xs" value={accountId} onChange={(e) => { setAccountId(e.target.value); setStack([]); setPage(1); }}>
+          <option value="">All accounts</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}</Select>
+        <Select aria-label="File type" className="w-auto" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
+          <option value="">Any type</option><option value="folder">Folders</option><option value="document">Documents</option><option value="spreadsheet">Spreadsheets</option><option value="presentation">Presentations</option><option value="pdf">PDFs</option><option value="image">Images</option><option value="video">Video</option><option value="audio">Audio</option><option value="archive">Archives</option><option value="other">Other</option></Select>
+        <Select aria-label="Sort" className="w-auto" value={`${sort}:${dir}`} onChange={(e) => { const [s, d] = e.target.value.split(":"); setSort(s); setDir(d as "asc" | "desc"); setPage(1); }}>
+          <option value="name:asc">Name A–Z</option><option value="name:desc">Name Z–A</option><option value="account:asc">Account A–Z</option><option value="account:desc">Account Z–A</option><option value="modified:desc">Newest first</option><option value="modified:asc">Oldest first</option><option value="size:desc">Largest first</option><option value="size:asc">Smallest first</option></Select>
+        <Select aria-label="Folder placement" className="w-auto" value={folders} onChange={(e) => { setFolders(e.target.value as FolderPlacement); setPage(1); }}>
+          <option value="first">Folders first</option><option value="last">Files first</option><option value="mixed">Mixed together</option></Select>
       </div>
 
       {(stack.length > 0 && !q) && (
@@ -218,7 +231,7 @@ function DriveBrowser() {
           {loc !== "trash" && <Button size="sm" variant="outline" onClick={() => setAddTo(selected)}><Link2 className="h-3.5 w-3.5" />Add to virtual folder</Button>}
           {loc !== "trash" && <Button size="sm" variant="outline" onClick={async () => { for (const i of selected) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); }}><Trash2 className="h-3.5 w-3.5" />Move to trash</Button>}
           {loc === "trash" && <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate({ items: selected.filter((i) => i.can.untrash), action: "restore" })}><RotateCcw className="h-3.5 w-3.5" />Restore</Button>}
-          {loc === "trash" && <Button size="sm" variant="destructive" disabled={bulk.isPending || !selected.some((i) => i.can.delete)} onClick={() => setBulkDeleting(selected.filter((i) => i.can.delete))}><Trash2 className="h-3.5 w-3.5" />Delete permanently…</Button>}
+          <Button size="sm" variant="destructive" disabled={bulk.isPending || !selected.some((i) => i.can.delete)} onClick={() => setBulkDeleting(selected.filter((i) => i.can.delete))}><Trash2 className="h-3.5 w-3.5" />Delete permanently…</Button>
           <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
         </div>)}
 
@@ -262,10 +275,12 @@ function DriveBrowser() {
       <Dialog open={!!moving} onOpenChange={(o) => !o && setMoving(null)} title={`Move “${moving?.name ?? ""}”`} description="Items can be moved within the same account.">
         {moving && <FolderPicker accountId={moving.account_id} label="Move here" onCancel={() => setMoving(null)} onPick={(f) => move.mutate({ it: moving, dest: f.id ?? "root" })} />}</Dialog>
       <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete permanently?" confirmLabel="Delete forever" danger busy={purge.isPending} onConfirm={() => deleting && purge.mutate(deleting)}>
-        “{deleting?.name}” will be removed from Google Drive and can't be recovered. This can't be undone.</ConfirmDialog>
+        “{deleting?.name}” will be removed from Google Drive right away{deleting && !deleting.trashed ? ", without going to the trash first" : ""}.
+        {deleting?.is_folder ? " Everything inside this folder that you own is deleted with it." : ""} This can't be undone.</ConfirmDialog>
       <ConfirmDialog open={!!bulkDeleting} onOpenChange={(o) => !o && setBulkDeleting(null)} title={`Delete ${bulkDeleting?.length ?? 0} item(s) permanently?`} confirmLabel="Delete forever" danger busy={bulk.isPending}
         onConfirm={() => bulkDeleting && bulk.mutate({ items: bulkDeleting, action: "delete" })}>
-        The selected items will be removed from Google Drive and can't be recovered. This can't be undone.</ConfirmDialog>
+        The selected items will be removed from Google Drive right away{loc !== "trash" ? ", without going to the trash first" : ""}.
+        {bulkDeleting?.some((i) => i.is_folder) ? " Everything you own inside the selected folders is deleted with them." : ""} This can't be undone.</ConfirmDialog>
       <ConfirmDialog open={emptying} onOpenChange={setEmptying} title="Empty trash?" confirmLabel="Empty trash" danger busy={emptyTrash.isPending}
         onConfirm={() => emptyTrash.mutate(emptyTargets.map((a) => a.id))}>
         Everything in the Google Drive trash of {emptyTargets.length === 1 ? emptyTargets[0].email : `all ${emptyTargets.length} connected accounts`} will be deleted permanently. This can't be undone.

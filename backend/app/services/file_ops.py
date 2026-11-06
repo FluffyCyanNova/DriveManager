@@ -77,9 +77,27 @@ def delete_permanently(db: Session, account_id: str, file_id: str) -> None:
     with accounts.drive_errors(db, acc):
         gfiles.delete_permanently(DriveClient(acc), file_id)
     row.status = "REMOVED"
+    if row.is_folder:
+        _remove_descendants(db, acc, row)
     db.commit()
     events.record_activity(db, "delete_permanent", account=acc, google_file_id=file_id, file_name=name)
     events.publish(db, "files.changed", {"account_id": acc.id})
+
+
+def _remove_descendants(db: Session, acc: Account, folder: DriveFile) -> None:
+    """Mirror Drive in the local index: deleting a folder also deletes everything under it that the account owns
+    (in a shared drive, everything under it). Items owned by others just lose this parent; the next sync settles them."""
+    pending, seen = [folder.google_file_id], {folder.google_file_id}
+    while pending:
+        parent = pending.pop()
+        kids = db.scalars(select(DriveFile).join(DriveFileParent, DriveFileParent.file_id == DriveFile.id).where(
+            DriveFileParent.account_id == acc.id, DriveFileParent.parent_google_id == parent, DriveFile.status == "ACTIVE")).all()
+        for k in kids:
+            if folder.drive_id or k.owned_by_me:
+                k.status = "REMOVED"
+            if k.is_folder and k.google_file_id not in seen:
+                seen.add(k.google_file_id)
+                pending.append(k.google_file_id)
 
 
 def empty_trash(db: Session, account_id: str) -> int:
