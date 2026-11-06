@@ -1,0 +1,57 @@
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Palette: cool slate paper, deep lagoon blue. Account identity colours are generated per account (utils/accountColor). */
+:root {
+  --background: 210 22% 97%;
+  --foreground: 213 30% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 213 30% 14%;
+  --primary: 207 88% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 24% 93%;
+  --secondary-foreground: 213 30% 20%;
+  --muted: 210 20% 94%;
+  --muted-foreground: 212 14% 40%;
+  --accent: 207 60% 93%;
+  --accent-foreground: 207 88% 24%;
+  --destructive: 4 68% 44%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 152 55% 29%;
+  --warning: 32 85% 36%;
+  --border: 211 18% 85%;
+  --ring: 207 88% 40%;
+}
+.dark {
+  --background: 214 26% 8%;
+  --foreground: 210 24% 93%;
+  --card: 214 24% 11%;
+  --card-foreground: 210 24% 93%;
+  --primary: 205 90% 62%;
+  --primary-foreground: 214 40% 8%;
+  --secondary: 214 20% 17%;
+  --secondary-foreground: 210 24% 90%;
+  --muted: 214 20% 15%;
+  --muted-foreground: 212 14% 68%;
+  --accent: 207 40% 20%;
+  --accent-foreground: 205 90% 82%;
+  --destructive: 4 75% 62%;
+  --destructive-foreground: 214 40% 8%;
+  --success: 152 50% 56%;
+  --warning: 36 90% 62%;
+  --border: 214 18% 22%;
+  --ring: 205 90% 62%;
+}
+
+* { border-color: hsl(var(--border)); }
+html, body, #root { height: 100%; }
+body { @apply bg-background text-foreground font-sans antialiased; font-feature-settings: "tnum"; }
+:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* trash portion of the storage bar */
+.hatch { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 3px, transparent 3px 6px); }

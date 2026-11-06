@@ -1,0 +1,99 @@
+# DriveManager - one project, one .env, three managed containers.
+# NEVER run `docker compose down -v` - it deletes the database and encryption key volumes.
+name: drivemanager
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    image: drivemanager-backend:local
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: backend
+      DATABASE_URL: sqlite:////data/drive_manager.db
+      STAGING_DIR: /staging
+      LOG_DIR: /logs
+      BACKUP_DIR: /backups
+      TMPDIR: /staging/.tmp
+    volumes:
+      - drive_manager_db:/data
+      - drive_manager_secrets:/secrets
+      - drive_manager_staging:/staging
+      - drive_manager_logs:/logs
+      - drive_manager_backups:/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
+      interval: 15s
+      timeout: 6s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks: [drivemanager]
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    image: drivemanager-worker:local
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: worker
+      DATABASE_URL: sqlite:////data/drive_manager.db
+      STAGING_DIR: /staging
+      LOG_DIR: /logs
+      BACKUP_DIR: /backups
+      TMPDIR: /staging/.tmp
+    volumes:
+      - drive_manager_db:/data
+      - drive_manager_secrets:/secrets:ro
+      - drive_manager_staging:/staging
+      - drive_manager_logs:/logs
+    depends_on:
+      backend:
+        condition: service_healthy   # backend runs migrations before it becomes healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.healthcheck"]
+      interval: 20s
+      timeout: 6s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 40s
+    restart: unless-stopped
+    networks: [drivemanager]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    image: drivemanager-frontend:local
+    # No secrets are passed to the frontend container.
+    environment:
+      ENABLE_TLS: ${ENABLE_TLS:-false}
+      TLS_PORT: ${TLS_PORT:-8443}
+    ports:
+      - "${APP_PORT:-8000}:80"
+      - "${TLS_PORT:-8443}:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 4s
+      retries: 5
+    restart: unless-stopped
+    networks: [drivemanager]
+
+volumes:
+  drive_manager_db:
+  drive_manager_secrets:
+  drive_manager_staging:
+  drive_manager_logs:
+  drive_manager_backups:
+
+networks:
+  drivemanager:
+    driver: bridge
