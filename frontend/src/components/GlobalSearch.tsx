@@ -18,7 +18,7 @@ export const GlobalSearch = forwardRef<HTMLInputElement, { className?: string; o
   return (
     <div className={cn("relative", className)}>
       <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-      <input ref={ref} type="search" value={value} aria-label="Search all files and folders" placeholder="Search everything…"
+      <input ref={ref} type="search" value={value} aria-label="Search all files and folders" placeholder="Search…"
         onChange={(e) => set(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); set(""); (e.target as HTMLInputElement).blur(); onDone?.(); } }}
         className="h-9 w-full rounded-md border bg-card pl-8 pr-14 text-sm placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden" />
