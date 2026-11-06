@@ -12,6 +12,7 @@ import { toast } from "@/stores/ui";
 import type { DriveItem, VFolder, VItem } from "@/types";
 import { cn } from "@/utils/cn";
 import { bytes, when } from "@/utils/format";
+import { useFileOpener } from "@/components/FileOpen";
 
 type Dlg = { kind: "new"; parent: string | null } | { kind: "rename"; f: VFolder } | { kind: "delete"; f: VFolder } | null;
 
@@ -23,6 +24,7 @@ export default function VirtualBrowser() {
   const [dlg, setDlg] = useState<Dlg>(null);
   const [movingItem, setMovingItem] = useState<VItem | null>(null);
   const [exporting, setExporting] = useState<DriveItem | null>(null);
+  const { openFile, dialog: openFileDialog } = useFileOpener(setExporting);
   const folders = tree.data ?? [];
   const current = folders.find((f) => f.id === selected) ?? null;
 
@@ -71,7 +73,9 @@ export default function VirtualBrowser() {
             <ul className="divide-y">{items.data!.items.map((it) => (
               <li key={it.item_id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                 <FileIcon mime={it.mime_type ?? ""} />
-                <div className="min-w-0 flex-1"><p className={cn("truncate", it.status === "missing" && "text-muted-foreground line-through")}>{it.name}</p><AccountChip id={it.account_id} email={it.account_email} /></div>
+                <div className="min-w-0 flex-1">{it.file && !it.file.is_folder && it.status !== "missing"
+                  ? <button className="block max-w-full truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it.file!)}>{it.name}</button>
+                  : <p className={cn("truncate", it.status === "missing" && "text-muted-foreground line-through")}>{it.name}</p>}<AccountChip id={it.account_id} email={it.account_email} /></div>
                 {it.status === "missing" && <Badge tone="danger">No longer in Drive</Badge>}
                 {it.status === "trashed" && <Badge tone="warning">In trash</Badge>}
                 {it.status === "inaccessible" && <Badge tone="warning">Account needs reconnecting</Badge>}
@@ -86,6 +90,7 @@ export default function VirtualBrowser() {
         “{dlg?.kind === "delete" ? dlg.f.name : ""}” and its sub-folders will be removed from DriveManager. <b>Your files in Google Drive are not touched.</b></ConfirmDialog>
       <VirtualFolderPicker open={!!movingItem} title="Move to another virtual folder" confirmLabel="Move" folders={folders} excludeId={selected ?? undefined} onClose={() => setMovingItem(null)} onPick={(to) => movingItem && moveItem.mutate({ it: movingItem, to })} />
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
+      {openFileDialog}
     </div>
   );
 }

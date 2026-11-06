@@ -111,6 +111,7 @@ export default function Layout() {
               <button onClick={logout} className="rounded p-1 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
             </div>
           </div>
+          <p className="mt-2 px-1 text-xs text-muted-foreground/80">by FluffyCyanNova {"<3"}</p>
         </div>
       </aside>
       <main className="min-w-0 flex-1">

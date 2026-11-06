@@ -19,6 +19,7 @@ import { cn } from "@/utils/cn";
 import { bytes, when } from "@/utils/format";
 import VirtualBrowser from "./VirtualBrowser";
 import { useMask } from "@/utils/privacy";
+import { useFileOpener } from "@/components/FileOpen";
 
 type Loc = "my_drive" | "shared_with_me" | "shared_drive" | "trash";
 interface Crumb { accountId: string; id: string; name: string }
@@ -30,6 +31,11 @@ const COLUMNS: Record<Col, ColumnSpec> = {
   size: { width: 100, min: 64, max: 240 },
 };
 const EDGE = 44; // checkbox and row-menu columns
+// The ⋮ column stays pinned to the right edge however wide the other columns are dragged. Sticky cells need an opaque
+// background, so the card colour sits underneath and the row's hover/selected tint is repeated on a ::before layer.
+const STICKY_BASE = "sticky right-0 z-[1] bg-card px-2 before:pointer-events-none before:absolute before:inset-0 before:content-[''] shadow-[-6px_0_6px_-6px_rgb(0_0_0/0.35)]";
+const STICKY_TH = `${STICKY_BASE} py-2.5 before:bg-muted/50`;
+const STICKY_TD = `${STICKY_BASE} py-2 group-hover:before:bg-muted/40`;
 // First click on a column: names and accounts A–Z, dates and sizes newest/largest first. Clicking again flips it.
 const FIRST_DIR: Record<Col, "asc" | "desc"> = { name: "asc", account: "asc", modified: "desc", size: "desc" };
 type FolderPlacement = "first" | "last" | "mixed";
@@ -87,6 +93,7 @@ function DriveBrowser() {
   const [moving, setMoving] = useState<DriveItem | null>(null);
   const [deleting, setDeleting] = useState<DriveItem | null>(null);
   const [exporting, setExporting] = useState<DriveItem | null>(null);
+  const { openFile, dialog: openFileDialog } = useFileOpener(setExporting);
   const [addTo, setAddTo] = useState<DriveItem[] | null>(null);
   const [newFolder, setNewFolder] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState<DriveItem[] | null>(null);
@@ -255,18 +262,18 @@ function DriveBrowser() {
             </colgroup>
             <thead className="border-b bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr>
               <th className="w-10 px-4 py-2.5"><input type="checkbox" aria-label="Select all" checked={selected.length === items.length} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i.id)) : new Set())} /></th>
-              {head("name", "Name")}{head("account", "Account", "hidden md:table-cell")}{head("modified", "Modified", "hidden sm:table-cell")}{head("size", "Size", "text-right")}<th /><th /></tr></thead>
+              {head("name", "Name")}{head("account", "Account", "hidden md:table-cell")}{head("modified", "Modified", "hidden sm:table-cell")}{head("size", "Size", "text-right")}<th /><th className={STICKY_TH} aria-label="Actions" /></tr></thead>
             <tbody className="divide-y">{items.map((it) => (
-              <tr key={it.id} className={cn("hover:bg-muted/40", sel.has(it.id) && "bg-accent/50")}>
+              <tr key={it.id} className={cn("group hover:bg-muted/40", sel.has(it.id) && "bg-accent/50")}>
                 <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${it.name}`} checked={sel.has(it.id)} onChange={(e) => { const n = new Set(sel); e.target.checked ? n.add(it.id) : n.delete(it.id); setSel(n); }} /></td>
                 <td data-col="name" className="px-2 py-2"><div className="flex min-w-0 items-center gap-2.5"><FileIcon mime={it.mime_type} />
-                  {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={it.name} onClick={() => openFolder(it)}>{it.name}</button> : <span className="truncate" title={it.name}>{it.name}</span>}
+                  {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={it.name} onClick={() => openFolder(it)}>{it.name}</button> : <button className="truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it)}>{it.name}</button>}
                   {it.location === "SHARED_WITH_ME" && <span className="shrink-0 rounded bg-secondary px-1.5 text-[11px] text-muted-foreground">shared</span>}</div></td>
                 <td data-col="account" className="hidden px-2 py-2 md:table-cell"><AccountChip id={it.account_id} email={it.account_email} /></td>
                 <td data-col="modified" className="hidden px-2 py-2 text-muted-foreground sm:table-cell"><span className="block truncate">{when(it.modified_time)}</span></td>
                 <td data-col="size" className="px-2 py-2 text-right text-muted-foreground"><span className="block truncate">{it.is_folder ? "—" : bytes(it.size)}</span></td>
                 <td />
-                <td className="px-2 py-2"><RowMenu items={menu(it)} label={`Actions for ${it.name}`} /></td></tr>))}</tbody></table></div>)}
+                <td className={cn(STICKY_TD, sel.has(it.id) && "before:bg-accent/50")}><div className="relative"><RowMenu items={menu(it)} label={`Actions for ${it.name}`} /></div></td></tr>))}</tbody></table></div>)}
         {!sharedRoot && total > 100 && (
           <div className="flex items-center justify-between border-t px-4 py-2.5 text-sm"><span className="text-muted-foreground">{total.toLocaleString()} items</span>
             <div className="flex items-center gap-2"><Button size="icon" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></Button><span>Page {page} of {pages}</span><Button size="icon" variant="outline" disabled={page >= pages} onClick={() => setPage(page + 1)} aria-label="Next page"><ChevronRight className="h-4 w-4" /></Button></div></div>)}
@@ -288,6 +295,7 @@ function DriveBrowser() {
         Everything in the Google Drive trash of {emptyTargets.length === 1 ? m.email(emptyTargets[0].email) : `all ${emptyTargets.length} connected accounts`} will be deleted permanently. This can't be undone.
         Shared-drive trash and files owned by other people aren't affected.</ConfirmDialog>
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
+      {openFileDialog}
       <VirtualFolderPicker open={!!addTo} title="Add to virtual folder" confirmLabel="Add" folders={vtree.data ?? []} onClose={() => setAddTo(null)}
         onPick={(id) => addTo && addItems.mutate({ folderId: id, items: addTo })}
         onCreate={async (name) => { const f = await api.post<{ id: string }>("/api/virtual-folders", { name, parent_id: null }); qc.invalidateQueries({ queryKey: ["virtual-tree"] }); return f.id; }} />
