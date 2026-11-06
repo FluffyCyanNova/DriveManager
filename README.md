@@ -20,6 +20,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 * Rename, move, create folders, download (Google Docs/Sheets/Slides export to Office or PDF).
 * **Move to trash**, restore, **Delete permanently** (from anywhere, with confirmation), and **Empty trash** per account or for all of them.
 * Quick links in the sidebar: **Files → Trash** and **Files → Virtual folders**.
+* **Sync now** in the sidebar re-indexes every connected account at once, and shows progress while the syncs run. Accounts also sync on their own schedule.
 
 ![Files: one list across accounts with filters, sortable columns and per-account colours](docs/screenshots/files.png)
 
