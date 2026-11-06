@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/input";
+import { useContextMenu, useLongPress } from "@/components/ui/contextmenu";
 import { RowMenu } from "@/components/ui/menu";
 import { fitColumn, ResizableTh, useColumnWidths, useMinWidth, type ColumnSpec } from "@/hooks/useColumnWidths";
 import { useAccounts } from "@/hooks/queries";
@@ -212,6 +213,24 @@ function DriveBrowser() {
   useEffect(() => { setStack([]); setPage(1); }, [loc]);
   const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { typeSearch(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
 
+  // Right-click (or long-press) on a row opens the same actions as ⋮. If the row is part of a multi-selection,
+  // the menu acts on every selected item instead. Shift + right-click keeps the browser's own menu.
+  const ctx = useContextMenu();
+  const longPress = useLongPress();
+  const [ctxRow, setCtxRow] = useState<string | null>(null);
+  useEffect(() => { if (!ctx.openFor) setCtxRow(null); }, [ctx.openFor]);
+  const bulkMenu = (list: DriveItem[]) => loc === "trash" ? [
+    { label: `Restore ${list.length} items`, icon: <RotateCcw className="h-4 w-4" />, disabled: !list.some((i) => i.can.untrash), onSelect: () => bulk.mutate({ items: list.filter((i) => i.can.untrash), action: "restore" }) },
+    { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, disabled: !list.some((i) => i.can.delete), onSelect: () => setBulkDeleting(list.filter((i) => i.can.delete)) },
+  ] : [
+    { label: "Add to virtual folder", icon: <Link2 className="h-4 w-4" />, onSelect: () => setAddTo(list) },
+    { label: `Move ${list.length} items to trash`, icon: <Trash2 className="h-4 w-4" />, onSelect: async () => { for (const i of list) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); } },
+    { label: "Delete permanently…", icon: <Trash2 className="h-4 w-4" />, danger: true, disabled: !list.some((i) => i.can.delete), onSelect: () => setBulkDeleting(list.filter((i) => i.can.delete)) },
+  ];
+  const rowMenu = (it: DriveItem) => (sel.has(it.id) && sel.size > 1
+    ? { items: bulkMenu(items.filter((i) => sel.has(i.id))), title: `${sel.size} selected` }
+    : { items: menu(it), title: it.name });
+
   const menu = (it: DriveItem) => [
     { label: "Open in Google Drive", icon: <ExternalLink className="h-4 w-4" />, hidden: !it.web_view_link, onSelect: () => window.open(it.web_view_link!, "_blank", "noopener") },
     { label: "Download", icon: <Download className="h-4 w-4" />, hidden: it.is_folder || !it.can.download, onSelect: () => download(it, () => setExporting(it)) },
@@ -295,7 +314,9 @@ function DriveBrowser() {
               <th className="w-10 px-4 py-2.5"><input type="checkbox" aria-label="Select all" checked={selected.length === items.length} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i.id)) : new Set())} /></th>
               {head("name", "Name")}{head("account", "Account", "hidden md:table-cell")}{head("modified", "Modified", "hidden sm:table-cell")}{head("size", "Size", "text-right")}<th /><th className={STICKY_TH} aria-label="Actions" /></tr></thead>
             <tbody className="divide-y">{items.map((it) => (
-              <tr key={it.id} className={cn("group hover:bg-muted/40", sel.has(it.id) && "bg-accent/50")}>
+              <tr key={it.id} className={cn("group hover:bg-muted/40", sel.has(it.id) && "bg-accent/50", ctxRow === it.id && "bg-muted/60 outline outline-1 -outline-offset-1 outline-primary/50")}
+                onContextMenu={(e) => { const m = rowMenu(it); if (ctx.onContextMenu(e, m.items, m.title)) setCtxRow(it.id); }}
+                {...longPress((x, y) => { const m = rowMenu(it); ctx.openAt(x, y, m.items, m.title); setCtxRow(it.id); })}>
                 <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${it.name}`} checked={sel.has(it.id)} onChange={(e) => { const n = new Set(sel); e.target.checked ? n.add(it.id) : n.delete(it.id); setSel(n); }} /></td>
                 <td data-col="name" className="px-2 py-2"><div className="flex min-w-0 items-center gap-2.5"><FileIcon mime={it.mime_type} />
                   {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={it.name} onClick={() => openFolder(it)}>{it.name}</button> : <button className="truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it)}>{it.name}</button>}
@@ -329,6 +350,7 @@ function DriveBrowser() {
         Shared-drive trash and files owned by other people aren't affected.</ConfirmDialog>
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       {openFileDialog}
+      {ctx.node}
       <ShareDialog item={sharing} onClose={() => setSharing(null)} />
       <MoveAccountDialog item={movingAcross} onClose={() => setMovingAcross(null)} />
       <VirtualFolderPicker open={!!addTo} title="Add to virtual folder" confirmLabel="Add" folders={vtree.data ?? []} onClose={() => setAddTo(null)}

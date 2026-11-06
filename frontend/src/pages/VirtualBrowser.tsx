@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, Link, Link2Off, Pencil, Share2, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AccountChip, ConfirmDialog, EmptyState, onError, PromptDialog, Spinner } from "@/components/Common";
 import { download, ExportDialog, FileIcon, VirtualFolderPicker } from "@/components/FileBits";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useContextMenu, useLongPress } from "@/components/ui/contextmenu";
 import { RowMenu } from "@/components/ui/menu";
 import { api } from "@/services/api";
 import { toast } from "@/stores/ui";
@@ -56,6 +57,12 @@ export default function VirtualBrowser() {
     })}</ul>
   );
 
+  // Right-click (or long-press) a row: same actions as its ⋮ menu. Shift + right-click keeps the browser's menu.
+  const ctx = useContextMenu();
+  const longPress = useLongPress();
+  const [ctxRow, setCtxRow] = useState<string | null>(null);
+  useEffect(() => { if (!ctx.openFor) setCtxRow(null); }, [ctx.openFor]);
+
   const menu = (it: VItem) => it.file ? [
     { label: "Open in Google Drive", icon: <ExternalLink className="h-4 w-4" />, hidden: !it.file.web_view_link, onSelect: () => window.open(it.file!.web_view_link!, "_blank", "noopener") },
     { label: "Download", icon: <Download className="h-4 w-4" />, hidden: it.file.is_folder || it.status !== "ok", onSelect: () => download(it.file!, () => setExporting(it.file)) },
@@ -75,7 +82,9 @@ export default function VirtualBrowser() {
         {!current ? <EmptyState title="Pick a virtual folder">Virtual folders are shortcuts you organise yourself. Add files from the Google Drive tab with “Add to virtual folder”.</EmptyState>
           : items.isLoading ? <Spinner /> : (items.data?.items ?? []).length === 0 ? <EmptyState title={`${current.name} is empty`}>Use “Add to virtual folder” on any file in the Google Drive tab.</EmptyState> : (
             <ul className="divide-y">{items.data!.items.map((it) => (
-              <li key={it.item_id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+              <li key={it.item_id} className={cn("flex items-center gap-3 px-4 py-2.5 text-sm", ctxRow === it.item_id && "bg-muted/60 outline outline-1 -outline-offset-1 outline-primary/50")}
+                onContextMenu={(e) => { if (ctx.onContextMenu(e, menu(it), it.name ?? undefined)) setCtxRow(it.item_id); }}
+                {...longPress((x, y) => { ctx.openAt(x, y, menu(it), it.name ?? undefined); setCtxRow(it.item_id); })}>
                 <FileIcon mime={it.mime_type ?? ""} />
                 <div className="min-w-0 flex-1">{it.file && !it.file.is_folder && it.status !== "missing"
                   ? <button className="block max-w-full truncate text-left hover:underline" title={`${it.name}: download or open in Google Drive`} onClick={() => openFile(it.file!)}>{it.name}</button>
@@ -95,6 +104,7 @@ export default function VirtualBrowser() {
       <VirtualFolderPicker open={!!movingItem} title="Move to another virtual folder" confirmLabel="Move" folders={folders} excludeId={selected ?? undefined} onClose={() => setMovingItem(null)} onPick={(to) => movingItem && moveItem.mutate({ it: movingItem, to })} />
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       {openFileDialog}
+      {ctx.node}
       <ShareDialog item={sharing} onClose={() => setSharing(null)} />
     </div>
   );

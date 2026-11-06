@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, BarChart3, FolderTree, GripVertical, LayoutDashboard, Link2, Pin, PinOff, Settings, Trash2, UploadCloud, Users } from "lucide-react";
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent as RPointerEvent } from "react";
-import { createPortal } from "react-dom";
+import { Activity, ArrowDown, ArrowUp, BarChart3, FolderTree, GripVertical, LayoutDashboard, Link2, Pin, PinOff, Settings, Trash2, UploadCloud, Users } from "lucide-react";
+import { useState, type DragEvent, type KeyboardEvent } from "react";
+import { create } from "zustand";
 import { Link, useLocation } from "react-router-dom";
 import { onError } from "@/components/Common";
+import { useContextMenu, useLongPress } from "@/components/ui/contextmenu";
 import { api } from "@/services/api";
 import { cn } from "@/utils/cn";
 
@@ -94,34 +95,32 @@ function activeKey(pathname: string, search: string): string | null {
   return Object.values(NAV_ITEMS).find((i) => i.to !== "/" && !i.to.startsWith("/files") && pathname.startsWith(i.to))?.key ?? null;
 }
 
-const itemCls = (active: boolean, pinned: boolean) => cn(
-  "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground md:pr-8",
+const itemCls = (active: boolean, pinned: boolean, collapsed: boolean) => cn(
+  "relative flex shrink-0 items-center gap-2.5 rounded-md py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+  collapsed ? "justify-center px-0 md:h-10 md:w-10" : "px-3 md:pr-8",
   pinned && "border border-black/40",
   active && "bg-accent text-accent-foreground",
 );
 
-export function SidebarNav() {
+export function SidebarNav({ collapsed = false }: { collapsed?: boolean }) {
   const loc = useLocation();
   const current = activeKey(loc.pathname, loc.search);
   const sb = useSidebar();
+  const ctx = useContextMenu();
+  const longPress = useLongPress();
   const [dragging, setDragging] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ key: string; after: boolean } | null>(null);
-  const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
-  const press = useRef<{ t: number; fired: boolean } | null>(null);
 
-  // Long-press (touch) or right-click opens a small Pin / Unpin menu.
-  const startPress = (e: RPointerEvent, key: string) => {
-    if (e.pointerType !== "touch") return;
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    press.current = { fired: false, t: window.setTimeout(() => { press.current!.fired = true; setMenu({ key, x: r.left, y: r.bottom + 4 }); }, 500) };
+  const menuFor = (key: string) => {
+    const isPinned = sb.pinned.includes(key);
+    const group = isPinned ? sb.pinned : sb.unpinned;
+    const i = group.indexOf(key);
+    return [
+      { label: isPinned ? "Unpin" : "Pin to top", icon: isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />, onSelect: () => sb.togglePin(key) },
+      { label: "Move up", icon: <ArrowUp className="h-4 w-4" />, disabled: i <= 0, onSelect: () => sb.step(key, -1) },
+      { label: "Move down", icon: <ArrowDown className="h-4 w-4" />, disabled: i >= group.length - 1, onSelect: () => sb.step(key, 1) },
+    ];
   };
-  const endPress = () => { if (press.current) window.clearTimeout(press.current.t); };
-  useEffect(() => {
-    if (!menu) return;
-    const close = () => setMenu(null);
-    window.addEventListener("pointerdown", close); window.addEventListener("scroll", close, true); window.addEventListener("resize", close);
-    return () => { window.removeEventListener("pointerdown", close); window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); };
-  }, [menu]);
 
   const onDragOver = (e: DragEvent, key: string) => {
     if (!dragging || sb.pinned.includes(key)) return;
@@ -142,52 +141,63 @@ export function SidebarNav() {
     const it = NAV_ITEMS[key];
     const Icon = it.icon;
     const showLine = !isPinned && drop?.key === key && dragging && dragging !== key;
+    const open = ctx.openFor?.title === it.label;
     return (
       <div key={key} className="group relative shrink-0" onDragOver={(e) => onDragOver(e, key)} onDrop={onDrop}>
         {showLine && <span className={cn("pointer-events-none absolute inset-x-1 z-10 h-0.5 rounded bg-primary", drop!.after ? "-bottom-0.5" : "-top-0.5")} />}
-        <Link to={it.to} aria-current={current === key ? "page" : undefined}
+        <Link to={it.to} aria-current={current === key ? "page" : undefined} aria-label={collapsed ? it.label : undefined}
           draggable={!isPinned}
           onDragStart={(e) => { setDragging(key); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", key); }}
           onDragEnd={() => { setDragging(null); setDrop(null); }}
           onKeyDown={(e) => onKey(e, key)}
-          onPointerDown={(e) => startPress(e, key)} onPointerUp={endPress} onPointerLeave={endPress} onPointerCancel={endPress}
-          onClick={(e) => { if (press.current?.fired) { e.preventDefault(); press.current = null; } }}
-          onContextMenu={(e) => { e.preventDefault(); setMenu({ key, x: e.clientX, y: e.clientY }); }}
-          title={isPinned ? "Pinned (right-click or long-press to unpin)" : "Drag to reorder (or Alt + ↑/↓). Right-click or long-press to pin"}
-          className={cn(itemCls(current === key, isPinned), dragging === key && "opacity-40")}>
-          <Icon className="h-4 w-4" /><span className="flex-1">{it.label}</span>
-          {!isPinned && <GripVertical aria-hidden className="hidden h-3.5 w-3.5 cursor-grab opacity-0 transition-opacity group-hover:opacity-50 md:block" />}
+          onContextMenu={(e) => ctx.onContextMenu(e, () => menuFor(key), it.label)}
+          {...longPress((x, y) => ctx.openAt(x, y, menuFor(key), it.label))}
+          title={collapsed ? `${it.label}${isPinned ? " (pinned)" : ""}` : isPinned ? "Pinned. Right-click or long-press for options" : "Drag to reorder (or Alt + ↑/↓). Right-click or long-press for options"}
+          className={cn(itemCls(current === key, isPinned, collapsed), dragging === key && "opacity-40", open && "ring-1 ring-primary/60")}>
+          <Icon className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="flex-1">{it.label}</span>}
+          {!collapsed && !isPinned && <GripVertical aria-hidden className="hidden h-3.5 w-3.5 cursor-grab opacity-0 transition-opacity group-hover:opacity-50 md:block" />}
+          {collapsed && isPinned && <Pin aria-hidden className="absolute right-0.5 top-0.5 hidden h-2.5 w-2.5 fill-current opacity-60 md:block" />}
         </Link>
-        {/* desktop: pin button on hover (always visible on pinned items) */}
-        <button type="button" onClick={() => sb.togglePin(key)} aria-label={isPinned ? `Unpin ${it.label}` : `Pin ${it.label} to the top`}
-          title={isPinned ? "Unpin" : "Pin to the top"}
-          className={cn("absolute right-1.5 top-1/2 hidden -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-background/60 hover:text-foreground md:block",
-            isPinned ? "opacity-60" : "opacity-0 focus-visible:opacity-100 group-hover:opacity-60")}>
-          <Pin className={cn("h-3 w-3", isPinned && "fill-current")} />
-        </button>
+        {/* wide desktop: pin button on hover (always visible on pinned items) */}
+        {!collapsed && (
+          <button type="button" onClick={() => sb.togglePin(key)} aria-label={isPinned ? `Unpin ${it.label}` : `Pin ${it.label} to the top`}
+            title={isPinned ? "Unpin" : "Pin to the top"}
+            className={cn("absolute right-1.5 top-1/2 hidden -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-background/60 hover:text-foreground md:block",
+              isPinned ? "opacity-60" : "opacity-0 focus-visible:opacity-100 group-hover:opacity-60")}>
+            <Pin className={cn("h-3 w-3", isPinned && "fill-current")} />
+          </button>)}
       </div>
     );
   };
 
   return (
-    <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible md:pb-0">
+    <nav aria-label="Main" className={cn("flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible md:pb-0", collapsed && "md:items-center")}>
       {/* Pinned group. On phones it sticks to the left on a solid strip that covers items scrolling underneath. */}
       {sb.pinned.length > 0 && (
-        <div className="sticky -left-2 z-10 -ml-2 flex shrink-0 gap-1 bg-card pl-2 pr-1 after:pointer-events-none after:absolute after:-right-4 after:top-0 after:h-full after:w-4 after:bg-gradient-to-r after:from-card after:to-transparent after:content-[''] md:static md:m-0 md:flex-col md:p-0 md:pb-1 md:after:hidden">
+        <div className={cn("sticky -left-2 z-10 -ml-2 flex shrink-0 gap-1 bg-card pl-2 pr-1 after:pointer-events-none after:absolute after:-right-4 after:top-0 after:h-full after:w-4 after:bg-gradient-to-r after:from-card after:to-transparent after:content-[''] md:static md:m-0 md:flex-col md:p-0 md:pb-1 md:after:hidden", collapsed && "md:items-center")}>
           {sb.pinned.map((k) => row(k, true))}
         </div>
       )}
       {sb.unpinned.map((k) => row(k, false))}
-      {menu && createPortal(
-        <div role="menu" style={{ left: Math.min(menu.x, window.innerWidth - 200), top: menu.y }} onPointerDown={(e) => e.stopPropagation()}
-          className="fixed z-50 w-48 rounded-md border bg-card p-1 shadow-lg">
-          <button role="menuitem" className="flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm hover:bg-accent"
-            onClick={() => { sb.togglePin(menu.key); setMenu(null); }}>
-            {sb.pinned.includes(menu.key) ? <><PinOff className="h-4 w-4" />Unpin</> : <><Pin className="h-4 w-4" />Pin to top</>}
-          </button>
-        </div>,
-        document.body,
-      )}
+      {ctx.node}
     </nav>
   );
 }
+
+// ---------------- desktop sidebar width (this browser only) ----------------
+export const SIDEBAR_MIN = 200, SIDEBAR_MAX = 360, SIDEBAR_DEFAULT_W = 224, SIDEBAR_ICONS = 64;
+const WIDTH_KEY = "dm-sidebar-width";
+const readWidth = (): { width: number; collapsed: boolean } => {
+  try {
+    const v = JSON.parse(localStorage.getItem(WIDTH_KEY) ?? "null");
+    if (v && typeof v.width === "number") return { width: Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, v.width)), collapsed: !!v.collapsed };
+  } catch { /* storage unavailable */ }
+  return { width: SIDEBAR_DEFAULT_W, collapsed: false };
+};
+const saveWidth = (v: { width: number; collapsed: boolean }) => { try { localStorage.setItem(WIDTH_KEY, JSON.stringify(v)); } catch { /* storage unavailable */ } };
+export const useSidebarWidth = create<{ width: number; collapsed: boolean; set: (v: Partial<{ width: number; collapsed: boolean }>) => void; reset: () => void }>((setState, get) => ({
+  ...readWidth(),
+  set: (v) => { const next = { width: v.width ?? get().width, collapsed: v.collapsed ?? get().collapsed }; saveWidth(next); setState(next); },
+  reset: () => { const next = { width: SIDEBAR_DEFAULT_W, collapsed: false }; saveWidth(next); setState(next); },
+}));

@@ -1,7 +1,7 @@
 import { AlertTriangle, Eye, EyeOff, LogOut, Moon, RefreshCw, Search, Sun } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch, useSearchShortcut } from "@/components/GlobalSearch";
-import { SidebarNav } from "@/components/SidebarNav";
+import { SIDEBAR_ICONS, SIDEBAR_MAX, SIDEBAR_MIN, SidebarNav, useSidebarWidth } from "@/components/SidebarNav";
 import { Toaster } from "@/components/Toaster";
 import { useAccounts, useHealth } from "@/hooks/queries";
 import { useEvents } from "@/hooks/useEvents";
@@ -23,8 +23,27 @@ export default function Layout() {
   const [mobileSearch, setMobileSearch] = useState(false);
   const desktopSearch = useRef<HTMLInputElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
+  // Desktop sidebar width: drag the right edge; far left snaps to icons only; double-click toggles. Saved in this browser.
+  const sw = useSidebarWidth();
+  const iconsOnly = sw.collapsed;
+  const sbWidth = iconsOnly ? SIDEBAR_ICONS : sw.width;
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      if (ev.clientX < 130) sw.set({ collapsed: true });
+      else sw.set({ collapsed: false, width: Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(ev.clientX))) });
+    };
+    const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); document.body.style.cursor = ""; };
+    el.addEventListener("pointermove", move); el.addEventListener("pointerup", up);
+    document.body.style.cursor = "col-resize";
+  };
   const focusSearch = useCallback(() => {
-    if (window.matchMedia("(min-width: 768px)").matches) desktopSearch.current?.focus();
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      if (useSidebarWidth.getState().collapsed) { useSidebarWidth.getState().set({ collapsed: false }); setTimeout(() => desktopSearch.current?.focus(), 50); }
+      else desktopSearch.current?.focus();
+    }
     else { setMobileSearch(true); setTimeout(() => mobileSearchRef.current?.focus(), 0); }
   }, []);
   useSearchShortcut(focusSearch);
@@ -65,11 +84,19 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
-      <aside className="shrink-0 border-b bg-card md:sticky md:top-0 md:h-screen md:w-56 md:border-b-0 md:border-r">
+      <aside className="shrink-0 border-b bg-card md:sticky md:top-0 md:h-screen md:w-[var(--sb)] md:border-b-0 md:border-r" style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
+        <div role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabIndex={0} aria-valuenow={sbWidth}
+          title="Drag to resize, far left for icons only. Double-click to toggle."
+          onPointerDown={startResize} onDoubleClick={() => sw.set({ collapsed: !iconsOnly })}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft") { e.preventDefault(); if (sw.width - 16 < SIDEBAR_MIN) sw.set({ collapsed: true }); else sw.set({ width: sw.width - 16, collapsed: false }); }
+            if (e.key === "ArrowRight") { e.preventDefault(); sw.set(iconsOnly ? { collapsed: false } : { width: Math.min(SIDEBAR_MAX, sw.width + 16) }); }
+          }}
+          className="absolute -right-1 top-0 z-30 hidden h-full w-2 cursor-col-resize touch-none outline-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 md:block" />
         <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
           <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
             className="shrink-0 rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
-          <div className={cn("flex min-w-0 flex-col leading-tight", mobileOpen && "hidden md:flex")}>
+          <div className={cn("flex min-w-0 flex-col leading-tight", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
             <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
               className="w-fit text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline">DriveManager</a>
             <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
@@ -88,8 +115,21 @@ export default function Layout() {
             <button onClick={logout} className="rounded p-1.5 hover:bg-accent" aria-label="Sign out"><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
-        <SidebarNav />
-        <div className="mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:block md:w-56">
+        <SidebarNav collapsed={iconsOnly} />
+        {iconsOnly && (
+          <div className="mt-auto hidden flex-col items-center gap-1.5 pb-4 pt-6 md:absolute md:bottom-0 md:flex md:w-[var(--sb)]">
+            {([
+              ["Search everything (Ctrl + K)", <Search key="s" className="h-4 w-4" />, focusSearch, false],
+              [syncLabel, <RefreshCw key="r" className={cn("h-4 w-4", busy && "animate-spin")} />, syncAll, busy || connected.length === 0],
+              [hideLabel, m.hide ? <EyeOff key="e" className="h-4 w-4" /> : <Eye key="e" className="h-4 w-4" />, toggleHideEmails, false],
+              ["Toggle dark mode", dark ? <Sun key="d" className="h-4 w-4" /> : <Moon key="d" className="h-4 w-4" />, toggleDark, false],
+              [`Sign out (${auth.username})`, <LogOut key="l" className="h-4 w-4" />, logout, false],
+            ] as const).map(([label, icon, onClick, disabled]) => (
+              <button key={label} onClick={onClick} disabled={disabled} aria-label={label} title={label}
+                className={cn("flex h-9 w-9 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-60", label === hideLabel && m.hide && "border-primary/50 text-foreground")}>{icon}</button>
+            ))}
+          </div>)}
+        <div className={cn("mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:w-[var(--sb)]", iconsOnly ? "md:hidden" : "md:block")}>
           <GlobalSearch ref={desktopSearch} className="mb-2" />
           <button onClick={syncAll} disabled={busy || connected.length === 0} title={syncLabel}
             className="mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">

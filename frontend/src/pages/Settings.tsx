@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, FolderOpen, Pin, PinOff, Plus, Save, Trash2 } from 
 import { useEffect, useState, type FormEvent } from "react";
 import { AccountChip, onError, PageHeader, Spinner } from "@/components/Common";
 import { FolderPicker } from "@/components/FolderPicker";
-import { NAV_ITEMS, useSidebar } from "@/components/SidebarNav";
+import { NAV_ITEMS, useSidebar, useSidebarWidth } from "@/components/SidebarNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,7 +152,7 @@ function SidebarCard() {
             <ul className="divide-y rounded-md border">{sb.unpinned.map((k, i) => rowFor(k, false, i, sb.unpinned.length))}</ul></div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" disabled={!sb.state.customized || sb.reset.isPending} onClick={() => sb.reset.mutate(undefined, { onSuccess: () => toast.success("Sidebar reset to the default order and pins.") })}>Reset order and pins</Button>
+          <Button variant="outline" disabled={sb.reset.isPending} onClick={() => sb.reset.mutate(undefined, { onSuccess: () => { useSidebarWidth.getState().reset(); toast.success("Sidebar reset to the default order, pins and width."); } })}>Reset order, pins and width</Button>
           <span className="text-sm text-muted-foreground">{sb.state.customized ? "Custom layout in use." : "Default layout (Dashboard pinned)."}</span>
         </div>
       </CardContent></Card>
