@@ -152,10 +152,10 @@ export function SidebarNav({ collapsed = false }: { collapsed?: boolean }) {
           onKeyDown={(e) => onKey(e, key)}
           onContextMenu={(e) => ctx.onContextMenu(e, () => menuFor(key), it.label)}
           {...longPress((x, y) => ctx.openAt(x, y, menuFor(key), it.label))}
-          title={collapsed ? `${it.label}${isPinned ? " (pinned)" : ""}` : isPinned ? "Pinned. Right-click or long-press for options" : "Drag to reorder (or Alt + ↑/↓). Right-click or long-press for options"}
+          title={collapsed ? `${it.label}${isPinned ? " (pinned)" : ""}` : isPinned ? `${it.label}: pinned. Right-click or long-press for options` : `${it.label}: drag to reorder (or Alt + ↑/↓). Right-click or long-press for options`}
           className={cn(itemCls(current === key, isPinned, collapsed), dragging === key && "opacity-40", open && "ring-1 ring-primary/60")}>
           <Icon className="h-4 w-4 shrink-0" />
-          {!collapsed && <span className="flex-1">{it.label}</span>}
+          {!collapsed && <span className="min-w-0 flex-1 truncate whitespace-nowrap">{it.label}</span>}
           {!collapsed && !isPinned && <GripVertical aria-hidden className="hidden h-3.5 w-3.5 cursor-grab opacity-0 transition-opacity group-hover:opacity-50 md:block" />}
           {collapsed && isPinned && <Pin aria-hidden className="absolute right-0.5 top-0.5 hidden h-2.5 w-2.5 fill-current opacity-60 md:block" />}
         </Link>
@@ -186,7 +186,7 @@ export function SidebarNav({ collapsed = false }: { collapsed?: boolean }) {
 }
 
 // ---------------- desktop sidebar width (this browser only) ----------------
-export const SIDEBAR_MIN = 200, SIDEBAR_MAX = 360, SIDEBAR_DEFAULT_W = 224, SIDEBAR_ICONS = 64;
+export const SIDEBAR_MIN = 224, SIDEBAR_MAX = 360, SIDEBAR_DEFAULT_W = 224, SIDEBAR_ICONS = 64;
 const WIDTH_KEY = "dm-sidebar-width";
 const readWidth = (): { width: number; collapsed: boolean } => {
   try {
