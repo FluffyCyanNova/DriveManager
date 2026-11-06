@@ -6,7 +6,7 @@ export interface Account {
   shared_drives?: { id: string; name: string }[];
   last_sync_job?: { state: string; kind: string; files_processed: number; error: string | null; finished_at: string | null } | null;
 }
-export interface FileCaps { rename: boolean; trash: boolean; delete: boolean; download: boolean; add_children: boolean; move: boolean; untrash: boolean }
+export interface FileCaps { rename: boolean; trash: boolean; delete: boolean; download: boolean; add_children: boolean; move: boolean; untrash: boolean; share: boolean }
 export interface DriveItem {
   id: string; account_id: string; account_email: string | null; google_file_id: string; name: string; mime_type: string; is_folder: boolean;
   size: number | null; modified_time: string | null; created_time: string | null; trashed: boolean; location: string; owner_email: string | null;
@@ -33,3 +33,6 @@ export interface Analytics {
   largest: DriveItem[]; uploads_per_day: { day: string; count: number; bytes: number }[];
 }
 export interface HistoryPoint { account_id: string; email: string; taken_at: string; usage: number; limit: number | null }
+export type ShareRole = "reader" | "commenter" | "writer";
+export interface SharePerson { id: string; type: string; role: string; email: string | null; name: string | null; domain: string | null; pending_owner: boolean }
+export interface Sharing { file_id: string; name: string; is_folder: boolean; web_view_link: string | null; can_share: boolean; link: ShareRole | null; people: SharePerson[]; failed?: { email: string; message: string }[] }

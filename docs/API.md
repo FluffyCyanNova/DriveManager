@@ -58,12 +58,22 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | PATCH | `/api/files/{account_id}/{file_id}` |
 | GET | `/api/files/{account_id}/{file_id}/download` |
 | POST | `/api/files/{account_id}/{file_id}/move` |
+| POST | `/api/files/{account_id}/{file_id}/move-to-account` |
+| GET | `/api/files/{account_id}/{file_id}/sharing` |
+| PUT | `/api/files/{account_id}/{file_id}/sharing/link` |
+| POST | `/api/files/{account_id}/{file_id}/sharing/people` |
+| PATCH | `/api/files/{account_id}/{file_id}/sharing/people/{permission_id}` |
+| DELETE | `/api/files/{account_id}/{file_id}/sharing/people/{permission_id}` |
 | POST | `/api/files/{account_id}/{file_id}/restore` |
 | POST | `/api/files/{account_id}/{file_id}/trash` |
 
 `GET /api/files` query parameters: `account_id`, `location` (`my_drive` | `shared_with_me` | `shared_drive`), `parent_id`, `q` (name search), `type` (`folder`, `document`, `spreadsheet`, `presentation`, `pdf`, `image`, `video`, `audio`, `archive`, `other`), `modified_after`, `modified_before`, `min_size`, `max_size`, `trashed`, `folders_only`, `sort` (`name` | `modified` | `size` | `type` | `account`), `direction` (`asc` | `desc`), `folders` (`first` | `last` | `mixed`, default `first`: where folders go relative to files), `page`, `page_size` (max 500).
 
 `GET /api/files/{account_id}/{file_id}/download` streams the file (`?format=` picks the export format for Google Docs/Sheets/Slides) and records a *Downloaded* activity entry. With `?check=true` it only confirms the download can start and returns `{"ok": true, "filename": ...}` (or the usual error JSON). It sends no file data and records no activity. The web app calls it before starting the real download.
+
+**Sharing.** `GET .../sharing` returns `{link, people, can_share, web_view_link, ...}`, where `link` is `null` (Restricted) or the role for *anyone with the link*. `PUT .../sharing/link` takes `{"role": "reader" | "commenter" | "writer" | null}`. `POST .../sharing/people` takes `{"emails": [...], "role", "notify", "message"}` and returns the new state plus `failed: [{email, message}]` for addresses Google rejected. `PATCH` changes one person's role and `DELETE` removes their access; the owner can't be removed.
+
+**Move to another account.** `POST .../move-to-account` takes `{"target_account_id", "target_folder_id"}` (`null` = the target's My Drive) and returns `{"method": "transfer" | "copy", "file": {...}}`. It returns `409 INSUFFICIENT_SPACE` if the file doesn't fit, and refuses folders, shortcuts, trashed items and the same account.
 
 `DELETE /api/files/{account_id}/{file_id}` moves the item to the trash. `?permanent=true&confirm=true` deletes it permanently (it doesn't need to be in the trash first).
 
