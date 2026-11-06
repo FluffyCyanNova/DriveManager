@@ -12,6 +12,8 @@ import { useAuth } from "@/stores/auth";
 import { toast, useUI } from "@/stores/ui";
 import { cn } from "@/utils/cn";
 import { useMask, usePrivacy } from "@/utils/privacy";
+import { UploadDialog } from "@/components/UploadForm";
+import { UploadPanel } from "@/components/UploadPanel";
 
 
 export default function Layout() {
@@ -163,6 +165,8 @@ export default function Layout() {
         {health.data && !health.data.encryption_key_ok && <Banner tone="danger">The encryption key doesn't match this database, so stored Google credentials can't be read. Restore the original APP_ENCRYPTION_KEY from your backup.</Banner>}
         <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8"><Outlet /></div>
       </main>
+      <UploadDialog />
+      <UploadPanel />
       <Toaster />
     </div>
   );

@@ -1,7 +1,7 @@
 """Sidebar order and pins are saved on the server so every device shows the same sidebar.
 Pinned items sit in a group at the top (in pin order) and can't be dragged; Dashboard is pinned by default."""
 
-DEFAULT = ["dashboard", "files", "trash", "virtual", "uploads", "accounts", "activity", "analytics", "settings"]
+DEFAULT = ["dashboard", "uploads", "files", "trash", "accounts", "virtual", "activity", "analytics", "settings"]
 
 
 def test_defaults(authed):
@@ -14,7 +14,7 @@ def test_save_normalises_and_persists(authed):
                                                    "pinned": ["uploads", "nope", "uploads", "dashboard"]})
     body = r.json()
     # unknown/duplicate keys dropped, missing items appended in default order; pins keep their own order
-    assert body["order"] == ["settings", "virtual", "files", "dashboard", "trash", "uploads", "accounts", "activity", "analytics"]
+    assert body["order"] == ["settings", "virtual", "files", "dashboard", "uploads", "trash", "accounts", "activity", "analytics"]
     assert body["pinned"] == ["uploads", "dashboard"] and body["customized"] is True
     assert authed.get("/api/settings/sidebar").json() == body
 

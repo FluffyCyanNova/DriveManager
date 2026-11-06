@@ -15,6 +15,7 @@ import { cn } from "@/utils/cn";
 import { bytes, when } from "@/utils/format";
 import { useFileOpener } from "@/components/FileOpen";
 import { copyLink, ShareDialog } from "@/components/ShareDialog";
+import { useUploads } from "@/stores/uploads";
 
 type Dlg = { kind: "new"; parent: string | null } | { kind: "rename"; f: VFolder } | { kind: "delete"; f: VFolder } | null;
 
@@ -30,6 +31,9 @@ export default function VirtualBrowser() {
   const { openFile, dialog: openFileDialog } = useFileOpener(setExporting, setSharing);
   const folders = tree.data ?? [];
   const current = folders.find((f) => f.id === selected) ?? null;
+  const setUploadContext = useUploads((s) => s.setContext);
+  useEffect(() => { setUploadContext(current ? { virtualFolderId: current.id } : {}); }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => setUploadContext({}), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const items = useQuery({ queryKey: ["virtual-items", selected], enabled: !!selected && !!current, queryFn: () => api.get<{ items: VItem[] }>(`/api/virtual-folders/${selected}/items`) });
   const inval = () => { qc.invalidateQueries({ queryKey: ["virtual-tree"] }); qc.invalidateQueries({ queryKey: ["virtual-items"] }); };

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users } from "lucide-react";
+import { ArrowLeftRight, UploadCloud, ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, Link2, Pencil, RotateCcw, Search, Share2, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AccountChip, ConfirmDialog, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
@@ -23,6 +23,7 @@ import { useMask } from "@/utils/privacy";
 import { useFileOpener } from "@/components/FileOpen";
 import { copyLink, ShareDialog } from "@/components/ShareDialog";
 import { MoveAccountDialog } from "@/components/MoveAccountDialog";
+import { useUploads } from "@/stores/uploads";
 
 type Loc = "my_drive" | "shared_with_me" | "shared_drive" | "trash";
 interface Crumb { accountId: string; id: string; name: string }
@@ -48,6 +49,7 @@ const readFolders = (): FolderPlacement => {
 };
 
 export default function Files() {
+  const openUpload = useUploads((s) => s.openDialog);
   // The view lives in the URL (?view=trash|virtual) so the sidebar's Trash and Virtual folders links can open it directly.
   const [search, setSearch] = useSearchParams();
   const tab = search.get("view") === "virtual" ? "virtual" : "drive";
@@ -55,9 +57,12 @@ export default function Files() {
   return (
     <>
       <PageHeader title="Files" description="Browse every connected account in one place. Changes are made in Google Drive itself." />
-      <div role="tablist" className="mb-5 inline-flex rounded-lg border bg-card p-1">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+      <div role="tablist" className="inline-flex rounded-lg border bg-card p-1">
         {([["drive", "Google Drive", FolderTree], ["virtual", "Virtual folders", Link2]] as const).map(([k, t, Icon]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium", tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" />{t}</button>))}
+      </div>
+        <Button className="ml-auto" onClick={() => openUpload()}><UploadCloud className="h-4 w-4" />Upload files</Button>
       </div>
       {tab === "drive" ? <DriveBrowser /> : <VirtualBrowser />}
     </>
@@ -109,6 +114,17 @@ function DriveBrowser() {
   const [emptying, setEmptying] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => { setQ(qInput.trim()); setPage(1); }, 300); return () => clearTimeout(t); }, [qInput]);
+  // ?account=…&folder=…&name=… (from the upload panel's folder button) opens that account / folder, then tidies the URL.
+  const linkAccount = search.get("account"), linkFolder = search.get("folder");
+  useEffect(() => {
+    if (!linkAccount) return;
+    const target = linkFolder ? [{ accountId: linkAccount, id: linkFolder, name: search.get("name") ?? "Folder" }] : [];
+    // The tab-reset effect below may run in the same pass (on first load or a tab change): hand it the folder to keep.
+    pendingStack.current = target;
+    setTimeout(() => { pendingStack.current = null; }, 0);
+    setBaseLoc("my_drive"); setAccountId(linkFolder ? "" : linkAccount); setStack(target);
+    const n = new URLSearchParams(search); ["account", "folder", "name"].forEach((k) => n.delete(k)); setSearch(n, { replace: true });
+  }, [linkAccount, linkFolder]); // eslint-disable-line react-hooks/exhaustive-deps
   // Sidebar search (or a shared link) sets ?q=: search everything, i.e. all accounts and every location except Trash.
   const urlQ = search.get("q") ?? "";
   useEffect(() => {
@@ -125,6 +141,12 @@ function DriveBrowser() {
   useEffect(() => { setSel(new Set()); }, [loc, stack, q, accountId, type, page]);
 
   const top = stack[stack.length - 1];
+  // "Upload files" starts in the folder being browsed (one account's My Drive or a shared drive); otherwise the defaults.
+  const setUploadContext = useUploads((s) => s.setContext);
+  useEffect(() => {
+    setUploadContext(top && (loc === "my_drive" || loc === "shared_drive") && !q ? { accountId: top.accountId, folder: { id: top.id, name: top.name } } : {});
+  }, [top?.id, top?.accountId, loc, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => setUploadContext({}), []); // eslint-disable-line react-hooks/exhaustive-deps
   const flat = allFiles && loc !== "trash" && !q;
   const sharedRoot = loc === "shared_drive" && !top && !q && !flat;
   const params = new URLSearchParams({ sort, direction: dir, folders, page: String(page), page_size: "100" });
@@ -210,7 +232,8 @@ function DriveBrowser() {
     if (search.get("q")) { const n = new URLSearchParams(search); n.delete("q"); if (l === "trash") n.set("view", "trash"); setSearch(n, { replace: true }); }
   };
   // Also reset when the view changes from outside (sidebar links, browser back/forward).
-  useEffect(() => { setStack([]); setPage(1); }, [loc]);
+  const pendingStack = useRef<Crumb[] | null>(null);   // a folder link that arrived together with a tab change
+  useEffect(() => { setStack(pendingStack.current ?? []); pendingStack.current = null; setPage(1); }, [loc]);
   const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { typeSearch(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
 
   // Right-click (or long-press) on a row opens the same actions as ⋮. If the row is part of a multi-selection,
@@ -254,9 +277,8 @@ function DriveBrowser() {
         </div>
         {canMkdir && <Button variant="outline" className="ml-auto" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
       </div>
-      <div className="relative mb-2"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
       {/* Filters on their own row; w-auto lets each select size to its longest option so labels never get cut off. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <Select aria-label="Account" className="w-auto max-w-xs" value={accountId} onChange={(e) => { setAccountId(e.target.value); setStack([]); setPage(1); }}>
           <option value="">All accounts</option>{(accounts.data ?? []).map((a) => <option key={a.id} value={a.id}>{m.email(a.email)}</option>)}</Select>
         <Select aria-label="File type" className="w-auto" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
@@ -270,6 +292,7 @@ function DriveBrowser() {
             title="List every file in every folder of this tab as one flat list">
             <input type="checkbox" checked={allFiles} onChange={(e) => setAllFiles(e.target.checked)} />Show all files</label>)}
       </div>
+      <div className="relative mb-4"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => typeSearch(e.target.value)} /></div>
 
       {(stack.length > 0 && !q) && (
         <nav aria-label="Folder path" className="mb-3 flex flex-wrap items-center gap-1 text-sm">

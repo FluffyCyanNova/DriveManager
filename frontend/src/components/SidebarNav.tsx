@@ -14,11 +14,11 @@ export interface SidebarState { order: string[]; pinned: string[]; default: stri
 
 export const NAV_ITEMS: Record<string, NavItem> = Object.fromEntries(([
   { key: "dashboard", to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { key: "uploads", to: "/uploads", label: "Uploads", icon: UploadCloud },
   { key: "files", to: "/files", label: "Files", icon: FolderTree },
   { key: "trash", to: "/files?view=trash", label: "Trash", icon: Trash2 },
-  { key: "virtual", to: "/files?view=virtual", label: "Virtual folders", icon: Link2 },
-  { key: "uploads", to: "/uploads", label: "Uploads", icon: UploadCloud },
   { key: "accounts", to: "/accounts", label: "Accounts", icon: Users },
+  { key: "virtual", to: "/files?view=virtual", label: "Virtual folders", icon: Link2 },
   { key: "activity", to: "/activity", label: "Activity", icon: Activity },
   { key: "analytics", to: "/analytics", label: "Analytics", icon: BarChart3 },
   { key: "settings", to: "/settings", label: "Settings", icon: Settings },
