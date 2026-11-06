@@ -3,13 +3,14 @@ import { AlertTriangle, ArrowRight, Plus, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AccountChip, EmptyState, PageHeader, Spinner } from "@/components/Common";
 import { StorageBar } from "@/components/StorageBar";
+import { StorageOverview } from "@/components/StorageOverview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAccounts } from "@/hooks/queries";
 import { api } from "@/services/api";
-import type { ActivityItem, UploadJob } from "@/types";
+import type { ActivityItem, FilePage, UploadJob } from "@/types";
 import { accountColor } from "@/utils/accountColor";
 import { ago, bytes } from "@/utils/format";
 import { describe } from "./Activity";
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const accounts = useAccounts();
   const uploads = useQuery({ queryKey: ["uploads", "active"], queryFn: () => api.get<UploadJob[]>("/api/uploads?state=QUEUED,VALIDATING,ALLOCATING,UPLOADING,FINALIZING,FAILED&limit=20"), refetchInterval: 10_000 });
   const activity = useQuery({ queryKey: ["activity", "recent"], queryFn: () => api.get<{ items: ActivityItem[] }>("/api/activity?limit=8") });
+  const trash = useQuery({ queryKey: ["files", "trash-count"], queryFn: () => api.get<FilePage>("/api/files?trashed=true&page_size=1") });
 
   if (accounts.isLoading) return <Spinner />;
   const list = accounts.data ?? [];
@@ -34,6 +36,7 @@ export default function Dashboard() {
     <>
       <PageHeader title="Dashboard" description={<>{list.length} account{list.length > 1 ? "s" : ""} connected · {bytes(used)} stored in total. Each account has its own separate limit.</>}
         actions={<Button asChild><Link to="/uploads"><UploadCloud className="h-4 w-4" />Upload files</Link></Button>} />
+      <StorageOverview accounts={list} trashCount={trash.data?.total} />
       <div className="grid gap-4 md:grid-cols-2">
         {list.map((a) => (
           <Card key={a.id} className="overflow-hidden">

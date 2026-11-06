@@ -94,6 +94,14 @@ def delete(account_id: str, file_id: str, permanent: bool = False, confirm: bool
     return {"ok": True}
 
 
+@router.post("/files/{account_id}/trash/empty")
+def empty_trash(account_id: str, confirm: bool = False, db: Session = Depends(get_db)):
+    """Permanently delete everything in this account's trash. Requires confirm=true."""
+    if not confirm:
+        raise AppError(400, "CONFIRM_REQUIRED", "Emptying the trash cannot be undone. Confirm it explicitly.")
+    return {"ok": True, "removed": file_ops.empty_trash(db, account_id)}
+
+
 @router.get("/files/{account_id}/{file_id}/download")
 def download(account_id: str, file_id: str, format: str | None = Query(None, max_length=10), db: Session = Depends(get_db)):
     stream = file_ops.open_download(db, account_id, file_id, format)
