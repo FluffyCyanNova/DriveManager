@@ -134,21 +134,21 @@ export default function Layout() {
         <div className={cn("mt-auto hidden px-3 pb-4 pt-6 md:absolute md:bottom-0 md:w-[var(--sb)]", iconsOnly ? "md:hidden" : "md:block")}>
           <GlobalSearch ref={desktopSearch} className="mb-2" />
           <button onClick={syncAll} disabled={busy || connected.length === 0} title={syncLabel}
-            className="mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">
+            className="mb-2 flex h-10 w-full items-center gap-2.5 rounded-md border px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent">
             <RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} />
             <span className="flex-1 text-left">{busy ? "Syncing…" : "Sync now"}</span>
             {busy && connected.length > 1 && <span className="text-xs tabular-nums">{syncingCount}/{connected.length}</span>}
           </button>
           <button onClick={toggleHideEmails} role="switch" aria-checked={m.hide}
             title="Replaces every email address in the app with a stable alias (e.g. user-k3f9x2). Display only, for screenshots or screen sharing."
-            className={cn("mb-2 flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-sm hover:bg-accent", m.hide ? "border-primary/50 text-foreground" : "text-muted-foreground")}>
+            className={cn("mb-2 flex h-10 w-full items-center gap-2.5 rounded-md border px-3 text-sm hover:bg-accent", m.hide ? "border-primary/50 text-foreground" : "text-muted-foreground")}>
             {m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             <span className="flex-1 text-left">Hide emails</span>
             <span className={cn("relative h-4 w-7 rounded-full transition-colors", m.hide ? "bg-primary" : "bg-muted-foreground/40")}>
               <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-background transition-all", m.hide ? "left-3.5" : "left-0.5")} />
             </span>
           </button>
-          <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+          <div className="flex h-10 items-center justify-between rounded-md border pl-3 pr-2 text-sm">
             <span className="truncate text-muted-foreground">{auth.username}</span>
             <div className="flex gap-1">
               <button onClick={toggleDark} className="rounded p-1 hover:bg-accent" aria-label="Toggle dark mode">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
