@@ -31,8 +31,6 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 * **Customisable sidebar**: **pin** items to a group at the top (hover the pin icon, or right-click / long-press for Pin, Move up and Move down); pinned items can't be dragged. Dashboard is pinned by default, and the default order is Dashboard, Uploads, Files, Trash, Accounts, Virtual folders, Activity, Analytics, Settings. Drag the others to reorder them (or **Alt + ↑/↓**). **Settings → Sidebar** lists every item with Pin and ↑/↓ buttons, which also works on phones, plus **Reset order and pins**. Saved on the server, so it's the same on every device. On phones, pinned items stay visible on the left while the rest of the top bar scrolls.
 * **Sync now** in the sidebar re-indexes every connected account at once, and shows progress while the syncs run. Accounts also sync on their own schedule.
 
-![Files: one list across accounts with filters, sortable columns and per-account colours](docs/screenshots/files.png)
-
 **Uploads**
 * Live progress, **automatically** (the default) or to an account you choose: routing rules by file type or name, then your account priority. A file is never split, and an account you chose is never silently swapped for another.
 * Uploads **resume** after network drops or restarts and **never duplicate**. Failed uploads can be retried, also on another account.
