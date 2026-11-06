@@ -142,6 +142,8 @@ class UploadJob(Base):
     account_email: Mapped[str | None] = mapped_column(String(320))
     destination_folder_id: Mapped[str | None] = mapped_column(String(128))
     destination_folder_name: Mapped[str | None] = mapped_column(String(1024))
+    # optional DriveManager virtual folder to add the finished file to (plain id: deleting the folder never breaks the job)
+    virtual_folder_id: Mapped[str | None] = mapped_column(String(36))
     state: Mapped[str] = mapped_column(String(20), default="QUEUED", index=True)
     # QUEUED VALIDATING ALLOCATING UPLOADING FINALIZING COMPLETED FAILED CANCELLED
     bytes_uploaded: Mapped[int] = mapped_column(BigInteger, default=0)

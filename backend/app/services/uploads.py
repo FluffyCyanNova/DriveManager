@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.core.exceptions import AppError
-from app.database.models import UploadJob
+from app.database.models import UploadJob, VirtualFolder
 from app.database.repositories.settings import get_setting
 from app.services import accounts, events
 
@@ -34,9 +34,13 @@ def new_job_id() -> str:
 
 
 def create(db: Session, *, job_id: str, filename: str, size: int, mime: str | None, path: str, mode: str,
-           account_id: str | None, folder_id: str | None, folder_name: str | None) -> UploadJob:
+           account_id: str | None, folder_id: str | None, folder_name: str | None,
+           virtual_folder_id: str | None = None) -> UploadJob:
     if mode not in ("MANUAL", "AUTO"):
         raise AppError(400, "BAD_MODE", "mode must be MANUAL or AUTO.")
+    virtual_folder_id = virtual_folder_id or None
+    if virtual_folder_id and not db.get(VirtualFolder, virtual_folder_id):
+        raise AppError(404, "FOLDER_NOT_FOUND", "Virtual folder was not found.")
     acc = None
     if mode == "MANUAL":
         if not account_id:
@@ -47,7 +51,7 @@ def create(db: Session, *, job_id: str, filename: str, size: int, mime: str | No
                     requested_account_id=account_id if mode == "MANUAL" else None,
                     account_id=acc.id if acc else None, account_email=acc.email if acc else None,
                     destination_folder_id=None if folder_id in (None, "", "root") else folder_id,
-                    destination_folder_name=folder_name)
+                    destination_folder_name=folder_name, virtual_folder_id=virtual_folder_id)
     db.add(job)
     db.commit()
     events.publish(db, "upload.queued", {"id": job.id})
@@ -100,7 +104,7 @@ def to_dict(j: UploadJob) -> dict:
     pct = round(100 * j.bytes_uploaded / j.size, 1) if j.size else (100.0 if j.state == "COMPLETED" else 0.0)
     return {"id": j.id, "filename": j.filename, "size": j.size, "mime_type": j.mime_type, "mode": j.mode, "state": j.state,
             "account_id": j.account_id, "account_email": j.account_email, "destination_folder_id": j.destination_folder_id,
-            "destination_folder_name": j.destination_folder_name, "bytes_uploaded": j.bytes_uploaded, "progress": pct,
+            "destination_folder_name": j.destination_folder_name, "virtual_folder_id": j.virtual_folder_id, "bytes_uploaded": j.bytes_uploaded, "progress": pct,
             "google_file_id": j.google_file_id, "error_code": j.error_code, "error_message": j.error_message,
             "allocation_reason": j.allocation_reason, "attempts": j.attempts, "cancel_requested": j.cancel_requested,
             "created_at": iso(j.created_at), "finished_at": iso(j.finished_at), "retryable": j.state in ("FAILED", "CANCELLED")}

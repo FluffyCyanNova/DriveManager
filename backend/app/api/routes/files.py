@@ -38,11 +38,12 @@ def list_files(account_id: str | None = None, location: str | None = Query(None,
                modified_after: datetime | None = None, modified_before: datetime | None = None,
                min_size: int | None = Query(None, ge=0), max_size: int | None = Query(None, ge=0),
                trashed: bool = False, folders_only: bool = False,
-               sort: str = Query("name", pattern="^(name|modified|size|type)$"), direction: str = Query("asc", pattern="^(asc|desc)$"),
+               sort: str = Query("name", pattern="^(name|modified|size|type|account)$"), direction: str = Query("asc", pattern="^(asc|desc)$"),
+               folders: str = Query("first", pattern="^(first|last|mixed)$"),
                page: int = Query(1, ge=1), page_size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
     fq = frepo.FileQuery(account_id=account_id, location=location, parent_id=parent_id, q=q, type=type, modified_after=modified_after,
                          modified_before=modified_before, min_size=min_size, max_size=max_size, trashed=trashed,
-                         folders_only=folders_only, sort=sort, direction=direction, page=page, page_size=page_size)
+                         folders_only=folders_only, sort=sort, direction=direction, folders=folders, page=page, page_size=page_size)
     rows, total = frepo.run(db, fq)
     return {"items": [frepo.to_dict(f, e) for f, e in rows], "total": total, "page": page, "page_size": page_size}
 

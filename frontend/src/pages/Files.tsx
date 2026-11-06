@@ -29,6 +29,13 @@ const COLUMNS: Record<Col, ColumnSpec> = {
   size: { width: 100, min: 64, max: 240 },
 };
 const EDGE = 44; // checkbox and row-menu columns
+// First click on a column: names and accounts A–Z, dates and sizes newest/largest first. Clicking again flips it.
+const FIRST_DIR: Record<Col, "asc" | "desc"> = { name: "asc", account: "asc", modified: "desc", size: "desc" };
+type FolderPlacement = "first" | "last" | "mixed";
+const FOLDERS_KEY = "dm-files-folders";
+const readFolders = (): FolderPlacement => {
+  try { const v = localStorage.getItem(FOLDERS_KEY); return v === "last" || v === "mixed" ? v : "first"; } catch { return "first"; }
+};
 
 export default function Files() {
   const [tab, setTab] = useState<"drive" | "virtual">("drive");
@@ -56,6 +63,9 @@ function DriveBrowser() {
   const [type, setType] = useState("");
   const [sort, setSort] = useState("name");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
+  const [folders, setFolders] = useState<FolderPlacement>(readFolders);
+  useEffect(() => { try { localStorage.setItem(FOLDERS_KEY, folders); } catch { /* storage unavailable */ } }, [folders]);
+  const sortBy = (c: Col) => { if (sort === c) setDir(dir === "asc" ? "desc" : "asc"); else { setSort(c); setDir(FIRST_DIR[c]); } setPage(1); };
   const [page, setPage] = useState(1);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const { widths, setWidth } = useColumnWidths<Col>("dm-files-columns", COLUMNS);
@@ -64,6 +74,7 @@ function DriveBrowser() {
   const tableWidth = EDGE * 2 + widths.name + widths.size + (showAccount ? widths.account : 0) + (showModified ? widths.modified : 0);
   const head = (c: Col, label: string, className?: string) => (
     <ResizableTh label={label} width={widths[c]} className={className} onResize={(w) => setWidth(c, w)}
+      onSort={() => sortBy(c)} sorted={sort === c ? dir : null}
       onFit={() => { const w = fitColumn(tableRef.current, c); if (w) setWidth(c, w); }} />
   );
   const [renaming, setRenaming] = useState<DriveItem | null>(null);
@@ -80,7 +91,7 @@ function DriveBrowser() {
 
   const top = stack[stack.length - 1];
   const sharedRoot = loc === "shared_drive" && !top && !q;
-  const params = new URLSearchParams({ sort, direction: dir, page: String(page), page_size: "100" });
+  const params = new URLSearchParams({ sort, direction: dir, folders, page: String(page), page_size: "100" });
   if (type) params.set("type", type);
   if (q) params.set("q", q);
   if (loc === "trash") params.set("trashed", "true");
@@ -181,8 +192,10 @@ function DriveBrowser() {
         <div className="relative min-w-48 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search files" className="pl-8" placeholder="Search by name across accounts…" value={qInput} onChange={(e) => setQInput(e.target.value)} /></div>
         <Select aria-label="File type" className="w-36" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
           <option value="">Any type</option><option value="folder">Folders</option><option value="document">Documents</option><option value="spreadsheet">Spreadsheets</option><option value="presentation">Presentations</option><option value="pdf">PDFs</option><option value="image">Images</option><option value="video">Video</option><option value="audio">Audio</option><option value="archive">Archives</option><option value="other">Other</option></Select>
-        <Select aria-label="Sort" className="w-36" value={`${sort}:${dir}`} onChange={(e) => { const [s, d] = e.target.value.split(":"); setSort(s); setDir(d as "asc" | "desc"); }}>
-          <option value="name:asc">Name A–Z</option><option value="name:desc">Name Z–A</option><option value="modified:desc">Newest first</option><option value="modified:asc">Oldest first</option><option value="size:desc">Largest first</option><option value="size:asc">Smallest first</option></Select>
+        <Select aria-label="Sort" className="w-36" value={`${sort}:${dir}`} onChange={(e) => { const [s, d] = e.target.value.split(":"); setSort(s); setDir(d as "asc" | "desc"); setPage(1); }}>
+          <option value="name:asc">Name A–Z</option><option value="name:desc">Name Z–A</option><option value="account:asc">Account A–Z</option><option value="account:desc">Account Z–A</option><option value="modified:desc">Newest first</option><option value="modified:asc">Oldest first</option><option value="size:desc">Largest first</option><option value="size:asc">Smallest first</option></Select>
+        <Select aria-label="Folder placement" className="w-36" value={folders} onChange={(e) => { setFolders(e.target.value as FolderPlacement); setPage(1); }}>
+          <option value="first">Folders first</option><option value="last">Files first</option><option value="mixed">Mixed together</option></Select>
         {canMkdir && <Button variant="outline" onClick={() => setNewFolder(true)}><FolderPlus className="h-4 w-4" />New folder</Button>}
       </div>
 

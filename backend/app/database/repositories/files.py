@@ -21,7 +21,8 @@ TYPE_FILTERS: dict[str, list[str]] = {
     "archive": ["application/zip", "application/x-zip%", "application/x-rar%", "application/vnd.rar", "application/x-7z%",
                 "application/x-tar", "application/gzip", "application/x-gzip"],
 }
-SORTS = {"name": func.lower(DriveFile.name), "modified": DriveFile.modified_time, "size": DriveFile.size, "type": DriveFile.mime_type}
+SORTS = {"name": func.lower(DriveFile.name), "modified": DriveFile.modified_time, "size": DriveFile.size, "type": DriveFile.mime_type,
+         "account": func.lower(Account.email)}
 
 
 @dataclass
@@ -39,6 +40,7 @@ class FileQuery:
     folders_only: bool = False
     sort: str = "name"
     direction: str = "asc"
+    folders: str = "first"               # first | last | mixed: where folders go relative to files
     page: int = 1
     page_size: int = 100
 
@@ -96,8 +98,14 @@ def run(db: Session, fq: FileQuery) -> tuple[list[tuple[DriveFile, str]], int]:
     total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery()))
     col = SORTS.get(fq.sort, SORTS["name"])
     order = col.desc() if fq.direction == "desc" else col.asc()
-    # folders always first when browsing by name
-    stmt = stmt.order_by(DriveFile.is_folder.desc(), order, DriveFile.id).offset((fq.page - 1) * fq.page_size).limit(fq.page_size)
+    keys = [order]
+    if fq.folders == "first":
+        keys.insert(0, DriveFile.is_folder.desc())
+    elif fq.folders == "last":
+        keys.insert(0, DriveFile.is_folder.asc())
+    if fq.sort != "name":   # tie-break by name so equal values (same account, same size) stay readable
+        keys.append(SORTS["name"].asc())
+    stmt = stmt.order_by(*keys, DriveFile.id).offset((fq.page - 1) * fq.page_size).limit(fq.page_size)
     return [(f, e) for f, e in db.execute(stmt).all()], total
 
 
