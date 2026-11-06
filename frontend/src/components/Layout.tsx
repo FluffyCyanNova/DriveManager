@@ -95,7 +95,7 @@ export default function Layout() {
             if (e.key === "ArrowRight") { e.preventDefault(); sw.set(iconsOnly ? { collapsed: false } : { width: Math.min(SIDEBAR_MAX, sw.width + 16) }); }
           }}
           className="absolute -right-1 top-0 z-30 hidden h-full w-2 cursor-col-resize touch-none outline-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 md:block" />
-        <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
+        <div className={cn("flex items-center gap-2.5 px-4 py-3.5 md:py-5", iconsOnly && "md:justify-center md:px-0")}>
           <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
             className="shrink-0 rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-9 w-9" /></a>
           <div className={cn("flex min-w-0 flex-col leading-tight", mobileOpen && "hidden md:flex", iconsOnly && "md:hidden")}>
