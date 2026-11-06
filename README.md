@@ -4,7 +4,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 
 ![Dashboard: combined storage bar and one card per account, with emails hidden](docs/screenshots/dashboard.png)
 
-<sub>Screenshots use sample accounts with **Hide emails** switched on.</sub>
+<sub>Screenshots use sample accounts with **Privacy mode** switched on.</sub>
 
 ## Features
 
@@ -45,7 +45,7 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 * Your own folder tree of links to files across accounts. Nothing moves in Google Drive.
 
 **Privacy and security**
-* **Hide emails**: a sidebar switch that replaces every email address in the app with a stable alias (e.g. `user-k3f9x2`). Handy for screenshots and screen sharing. Display only: nothing changes on the server.
+* **Privacy mode**: a sidebar switch that replaces every email address in the app with a stable alias (e.g. `user-k3f9x2`). Handy for screenshots and screen sharing. Display only: nothing changes on the server.
 * Single local user with a hashed password, CSRF and origin checks, and Google refresh tokens encrypted at rest. Tokens are redacted from logs.
 * Activity history, plus backup and restore scripts.
 
@@ -79,7 +79,7 @@ Then reload the app in your browser. **Settings → About** shows which build yo
 
 ## Logs
 
-The backend and worker write rotating log files (`backend.log`, `worker.log`; 5 MB each, 5 old copies kept) to the `drivemanager_drive_manager_logs` Docker volume. Tokens, passwords and the client secret are redacted. Email addresses and file names are not, since **Hide emails** only changes what's on screen.
+The backend and worker write rotating log files (`backend.log`, `worker.log`; 5 MB each, 5 old copies kept) to the `drivemanager_drive_manager_logs` Docker volume. Tokens, passwords and the client secret are redacted. Email addresses and file names are not, since **Privacy mode** only changes what's on screen.
 
 ```powershell
 scripts\logs.ps1            # follow live output of all services (Ctrl+C to stop)
@@ -96,7 +96,7 @@ Which to check: **worker** for uploads, syncs and storage refreshes; **backend**
 |---|---|
 | [docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md) | Step-by-step Google Cloud setup (read the 7-day token note) |
 | [docs/DOCKER.md](docs/DOCKER.md) | Operating it: volumes, updating, backup/restore, HTTPS, troubleshooting |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: uploads, deleting, virtual folders, Hide emails, security model |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it works: uploads, deleting, virtual folders, Privacy mode, security model |
 | [docs/DATABASE.md](docs/DATABASE.md) | Tables and migrations |
 | [docs/API.md](docs/API.md) | HTTP API, including query parameters for file listing and uploads |
 

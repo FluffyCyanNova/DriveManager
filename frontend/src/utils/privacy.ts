@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 /**
- * "Hide emails" privacy mode (for screenshots or screen sharing). Display only: real addresses are still used for
+ * "Privacy mode" (for screenshots or screen sharing). Display only: real addresses are still used for
  * every API call. Each email gets a stable alias (same email, same alias) so accounts stay distinguishable.
  */
 const KEY = "dm-hide-emails";

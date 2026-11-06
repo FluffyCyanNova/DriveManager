@@ -85,7 +85,7 @@ Stored server-side in `app_settings` (`ui.sidebar`) as `{order, pinned}`, so eve
 ## Global search
 The sidebar search box writes its text to the Files page's URL (`/files?q=…`), so the sidebar box and the Files search box always show the same text, and a search can be bookmarked. A sidebar search clears the account filter and searches every location except Trash.
 
-## Hide emails (privacy mode)
+## Privacy mode (hides emails)
 A switch in the sidebar replaces every email address shown in the UI with a stable alias such as `user-k3f9x2`. That includes chips, lists, charts, server messages and notifications. It also hides Google display names. The same address always gets the same alias, and account colours stay the same, so accounts remain easy to tell apart. It is **display only**, meant for screenshots and screen sharing: the API, the logs and the database still hold the real addresses. The setting is stored per browser.
 
 ## Security model

@@ -58,7 +58,7 @@ export default function Layout() {
   const uploadLabel = onUploadsPage ? "You're already on the Uploads page" : "Upload files";
   const navigate = useNavigate();
   const closeMobileSearch = () => { setMobileSearch(false); if (searching) navigate("/files", { replace: true }); };
-  const hideLabel = m.hide ? "Show emails" : "Hide emails";
+  const hideLabel = m.hide ? "Privacy mode: on (emails hidden)" : "Privacy mode: off";
   useEvents();
   const { dark, toggleDark } = useUI();
   const auth = useAuth();
@@ -153,10 +153,10 @@ export default function Layout() {
             {busy && connected.length > 1 && <span className="text-xs tabular-nums">{syncingCount}/{connected.length}</span>}
           </button>
           <button onClick={toggleHideEmails} role="switch" aria-checked={m.hide}
-            title="Replaces every email address in the app with a stable alias (e.g. user-k3f9x2). Display only, for screenshots or screen sharing."
+            title="Privacy mode replaces every email address in the app with a stable alias (e.g. user-k3f9x2). Display only, for screenshots or screen sharing."
             className={cn("mb-1.5 flex h-9 w-full items-center gap-2.5 rounded-md border px-3 text-sm hover:bg-accent", m.hide ? "border-primary/50 text-foreground" : "text-muted-foreground")}>
             {m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            <span className="flex-1 text-left">Hide emails</span>
+            <span className="flex-1 text-left">Privacy mode</span>
             <span className={cn("relative h-4 w-7 rounded-full transition-colors", m.hide ? "bg-primary" : "bg-muted-foreground/40")}>
               <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-background transition-all", m.hide ? "left-3.5" : "left-0.5")} />
             </span>
