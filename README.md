@@ -32,10 +32,10 @@ A private, self-hosted dashboard for managing several Google Drive accounts in o
 ![Files: one list across accounts with filters, sortable columns and per-account colours](docs/screenshots/files.png)
 
 **Uploads**
-* Live progress, to an account you choose or **automatically**: routing rules by file type or name, then your account priority. A file is never split, and an account you chose is never silently swapped for another.
+* Live progress, **automatically** (the default) or to an account you choose: routing rules by file type or name, then your account priority. A file is never split, and an account you chose is never silently swapped for another.
 * Uploads **resume** after network drops or restarts and **never duplicate**. Failed uploads can be retried, also on another account.
 * Optionally **add each upload to a virtual folder** as soon as it finishes.
-* One blue **Upload files** button in the sidebar, above Search (the upload icon in icons-only mode and in the phone top bar), opens an upload dialog. It starts in the folder you're browsing; in a virtual folder, "Also add to virtual folder" is preselected. Elsewhere it uses the defaults. On the Uploads page it's greyed out, since that page has its own upload form.
+* One blue **Upload files** button in the sidebar, above Search (the upload icon in icons-only mode and in the phone top bar), opens an upload dialog. It starts in the folder you're browsing (with *Choose an account* selected); otherwise it starts on *Automatic*; in a virtual folder, "Also add to virtual folder" is preselected. Elsewhere it uses the defaults. On the Uploads page it's greyed out, since that page has its own upload form.
 * **Drag files from your computer** anywhere onto DriveManager (desktop, every page except Uploads): the window shows *Drop files to upload* with where they'd go, and dropping opens the Upload dialog with the files attached. Review or change the destination, then press **Upload**. Dropped folders are skipped, with a note.
 * A **progress panel** at the bottom right, like Google Drive's, shows every upload from this session: progress rings, ✓ and a folder button that opens the file's folder in Files. It stays until you close it, and ⌄ collapses it. **Failed** uploads explain what went wrong, and ↻ offers *Same account (try again)* (when the account isn't the problem) or another connected account with enough space. Files that never reached the server can be re-sent while the page is open. Uploads keep going while you move between pages.
 

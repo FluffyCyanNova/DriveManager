@@ -36,7 +36,7 @@ export function UploadForm({ prefill, onQueued, compact, initialFiles }: { prefi
   const accounts = useAccounts();
   const enqueue = useUploads((s) => s.enqueue);
   const active = (accounts.data ?? []).filter((a) => a.status === "ACTIVE");
-  const [mode, setMode] = useState<"MANUAL" | "AUTO">("MANUAL");
+  const [mode, setMode] = useState<"MANUAL" | "AUTO">(prefill?.folder ? "MANUAL" : "AUTO");
   const [accountId, setAccountId] = useState(prefill?.accountId ?? "");
   const [folder, setFolder] = useState<PickedFolder | null>(prefill?.folder ?? null);
   const [virtualFolderId, setVirtualFolderId] = useState(prefill?.virtualFolderId ?? "");
@@ -69,7 +69,7 @@ export function UploadForm({ prefill, onQueued, compact, initialFiles }: { prefi
   return (
     <div className="space-y-5">
       <div role="radiogroup" aria-label="Destination mode" className="grid gap-3 sm:grid-cols-2">
-        {([["MANUAL", "Choose an account", "You decide exactly where the file goes."], ["AUTO", "Automatic", "Uses your routing rules and account priority, and only picks an account with enough room."]] as const).map(([k, t, d]) => (
+        {([["AUTO", "Automatic", "Uses your routing rules and account priority, and only picks an account with enough room."], ["MANUAL", "Choose an account", "You decide exactly where the file goes."]] as const).map(([k, t, d]) => (
           <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)} className={cn("rounded-lg border p-3.5 text-left transition-colors", mode === k ? "border-primary bg-accent" : "hover:bg-muted")}>
             <p className="flex items-center gap-2 font-medium">{k === "AUTO" && <Sparkles className="h-4 w-4 text-primary" />}{t}</p>
             {!compact && <p className="mt-0.5 text-sm text-muted-foreground">{d}</p>}
