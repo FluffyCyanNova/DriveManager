@@ -53,6 +53,7 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | GET | `/api/drives/{account_id}` |
 | GET | `/api/files` |
 | POST | `/api/files/{account_id}/folders` |
+| POST | `/api/files/{account_id}/trash/empty?confirm=true` |
 | DELETE | `/api/files/{account_id}/{file_id}` |
 | PATCH | `/api/files/{account_id}/{file_id}` |
 | GET | `/api/files/{account_id}/{file_id}/download` |

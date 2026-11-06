@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Download, ExternalLink, FolderInput, FolderPlus, FolderTree, Link2, Pencil, RotateCcw, Search, Trash2, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AccountChip, ConfirmDialog, EmptyState, onError, PageHeader, PromptDialog, Spinner } from "@/components/Common";
 import { download, ExportDialog, FileIcon, VirtualFolderPicker } from "@/components/FileBits";
 import { FolderPicker } from "@/components/FolderPicker";
@@ -9,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/input";
 import { RowMenu } from "@/components/ui/menu";
+import { fitColumn, ResizableTh, useColumnWidths, useMinWidth, type ColumnSpec } from "@/hooks/useColumnWidths";
 import { useAccounts } from "@/hooks/queries";
 import { api } from "@/services/api";
 import { toast } from "@/stores/ui";
@@ -19,6 +21,14 @@ import VirtualBrowser from "./VirtualBrowser";
 
 type Loc = "my_drive" | "shared_with_me" | "shared_drive" | "trash";
 interface Crumb { accountId: string; id: string; name: string }
+type Col = "name" | "account" | "modified" | "size";
+const COLUMNS: Record<Col, ColumnSpec> = {
+  name: { width: 420, min: 140, max: 1400 },
+  account: { width: 240, min: 90, max: 600 },
+  modified: { width: 190, min: 110, max: 400 },
+  size: { width: 100, min: 64, max: 240 },
+};
+const EDGE = 44; // checkbox and row-menu columns
 
 export default function Files() {
   const [tab, setTab] = useState<"drive" | "virtual">("drive");
@@ -38,7 +48,8 @@ function DriveBrowser() {
   const qc = useQueryClient();
   const accounts = useAccounts();
   const [accountId, setAccountId] = useState("");
-  const [loc, setLoc] = useState<Loc>("my_drive");
+  const [search] = useSearchParams();
+  const [loc, setLoc] = useState<Loc>(search.get("view") === "trash" ? "trash" : "my_drive");
   const [stack, setStack] = useState<Crumb[]>([]);
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
@@ -47,12 +58,22 @@ function DriveBrowser() {
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const { widths, setWidth } = useColumnWidths<Col>("dm-files-columns", COLUMNS);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const showAccount = useMinWidth(768), showModified = useMinWidth(640);
+  const tableWidth = EDGE * 2 + widths.name + widths.size + (showAccount ? widths.account : 0) + (showModified ? widths.modified : 0);
+  const head = (c: Col, label: string, className?: string) => (
+    <ResizableTh label={label} width={widths[c]} className={className} onResize={(w) => setWidth(c, w)}
+      onFit={() => { const w = fitColumn(tableRef.current, c); if (w) setWidth(c, w); }} />
+  );
   const [renaming, setRenaming] = useState<DriveItem | null>(null);
   const [moving, setMoving] = useState<DriveItem | null>(null);
   const [deleting, setDeleting] = useState<DriveItem | null>(null);
   const [exporting, setExporting] = useState<DriveItem | null>(null);
   const [addTo, setAddTo] = useState<DriveItem[] | null>(null);
   const [newFolder, setNewFolder] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState<DriveItem[] | null>(null);
+  const [emptying, setEmptying] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => { setQ(qInput.trim()); setPage(1); }, 300); return () => clearTimeout(t); }, [qInput]);
   useEffect(() => { setSel(new Set()); }, [loc, stack, q, accountId, type, page]);
@@ -73,11 +94,51 @@ function DriveBrowser() {
   const vtree = useQuery({ queryKey: ["virtual-tree"], queryFn: () => api.get<VFolder[]>("/api/virtual-folders") });
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ["files"] }); qc.invalidateQueries({ queryKey: ["storage"] }); };
+  // Re-read storage numbers so the dashboard's trash and free space catch up (Google can still lag a few minutes).
+  const refreshQuota = async (ids: string[]) => {
+    await Promise.all([...new Set(ids)].map((id) => api.post(`/api/accounts/${id}/quota/refresh`).catch(() => undefined)));
+    qc.invalidateQueries({ queryKey: ["accounts"] });
+  };
   const ok = (msg: string) => () => { toast.success(msg); refresh(); };
   const rename = useMutation({ mutationFn: (v: { it: DriveItem; name: string }) => api.patch(`/api/files/${v.it.account_id}/${v.it.google_file_id}`, { name: v.name }), onSuccess: () => { setRenaming(null); ok("Renamed.")(); }, onError });
   const trash = useMutation({ mutationFn: (it: DriveItem) => api.post(`/api/files/${it.account_id}/${it.google_file_id}/trash`), onSuccess: ok("Moved to Google Drive trash. You can restore it from Trash."), onError });
-  const restore = useMutation({ mutationFn: (it: DriveItem) => api.post(`/api/files/${it.account_id}/${it.google_file_id}/restore`), onSuccess: ok("Restored."), onError });
-  const purge = useMutation({ mutationFn: (it: DriveItem) => api.del(`/api/files/${it.account_id}/${it.google_file_id}?permanent=true&confirm=true`), onSuccess: () => { setDeleting(null); ok("Deleted permanently.")(); }, onError });
+  const restore = useMutation({ mutationFn: (it: DriveItem) => api.post(`/api/files/${it.account_id}/${it.google_file_id}/restore`), onSuccess: (_r, it) => { ok("Restored.")(); refreshQuota([it.account_id]); }, onError });
+  const purge = useMutation({ mutationFn: (it: DriveItem) => api.del(`/api/files/${it.account_id}/${it.google_file_id}?permanent=true&confirm=true`), onSuccess: (_r, it) => { setDeleting(null); ok("Deleted permanently.")(); refreshQuota([it.account_id]); }, onError });
+  // Bulk actions in Trash: run one by one so a single failure doesn't stop the rest, then report.
+  const bulk = useMutation({
+    mutationFn: async (v: { items: DriveItem[]; action: "restore" | "delete" }) => {
+      let done = 0; const failed: string[] = [];
+      for (const it of v.items) {
+        try {
+          if (v.action === "restore") await api.post(`/api/files/${it.account_id}/${it.google_file_id}/restore`);
+          else await api.del(`/api/files/${it.account_id}/${it.google_file_id}?permanent=true&confirm=true`);
+          done++;
+        } catch { failed.push(it.name); }
+      }
+      return { ...v, done, failed };
+    },
+    onSuccess: (r) => {
+      setBulkDeleting(null); setSel(new Set()); refresh(); refreshQuota(r.items.map((i) => i.account_id));
+      const verb = r.action === "restore" ? "Restored" : "Deleted permanently";
+      if (r.failed.length) toast.error(`${verb} ${r.done} item(s). ${r.failed.length} failed: ${r.failed.slice(0, 3).join(", ")}${r.failed.length > 3 ? "…" : ""}`);
+      else toast.success(`${verb} ${r.done} item(s).`);
+    }, onError,
+  });
+  const emptyTrash = useMutation({
+    mutationFn: async (ids: string[]) => {
+      let removed = 0; const failed: string[] = [];
+      for (const id of ids) {
+        try { removed += (await api.post<{ removed: number }>(`/api/files/${id}/trash/empty?confirm=true`)).removed; }
+        catch { failed.push((accounts.data ?? []).find((a) => a.id === id)?.email ?? id); }
+      }
+      return { removed, failed };
+    },
+    onSuccess: (r) => {
+      setEmptying(false); setSel(new Set()); refresh(); qc.invalidateQueries({ queryKey: ["accounts"] });
+      if (r.failed.length) toast.error(`Couldn't empty the trash for ${r.failed.join(", ")}. Check the Activity page or logs.`);
+      else toast.success(`Trash emptied${r.removed ? ` (${r.removed} item${r.removed === 1 ? "" : "s"})` : ""}. Freed space can take a few minutes to show.`);
+    }, onError,
+  });
   const move = useMutation({ mutationFn: (v: { it: DriveItem; dest: string }) => api.post(`/api/files/${v.it.account_id}/${v.it.google_file_id}/move`, { destination_id: v.dest }), onSuccess: () => { setMoving(null); ok("Moved.")(); }, onError });
   const mkdir = useMutation({
     mutationFn: (name: string) => { const a = top?.accountId ?? accountId; return api.post(`/api/files/${a}/folders`, { name, parent_id: top?.id ?? null }); },
@@ -93,6 +154,7 @@ function DriveBrowser() {
   const pages = Math.max(1, Math.ceil(total / 100));
   const canMkdir = loc !== "trash" && loc !== "shared_with_me" && (top ? true : !!accountId && loc === "my_drive");
   const selected = items.filter((i) => sel.has(i.id));
+  const emptyTargets = (accounts.data ?? []).filter((a) => a.status === "ACTIVE" && (!accountId || a.id === accountId));
   const go = (l: Loc) => { setLoc(l); setStack([]); setPage(1); setQInput(""); };
   const openFolder = (it: DriveItem) => { if (it.trashed) return; if (q) { setQInput(""); setStack([{ accountId: it.account_id, id: it.google_file_id, name: it.name }]); } else setStack([...stack, { accountId: it.account_id, id: it.google_file_id, name: it.name }]); setPage(1); };
 
@@ -129,6 +191,12 @@ function DriveBrowser() {
           <button className="rounded px-1.5 py-0.5 hover:bg-accent" onClick={() => setStack([])}>{{ my_drive: "My Drive", shared_with_me: "Shared with me", shared_drive: "Shared drives", trash: "Trash" }[loc]}</button>
           {stack.map((c, i) => <span key={`${c.id}${i}`} className="flex items-center gap-1"><ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /><button className={cn("rounded px-1.5 py-0.5 hover:bg-accent", i === stack.length - 1 && "font-semibold")} onClick={() => setStack(stack.slice(0, i + 1))}>{c.name}</button></span>)}
         </nav>)}
+      {loc === "trash" && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-sm">
+          <span className="text-muted-foreground">Items in trash still use storage. Google deletes them for good after 30 days.</span>
+          <Button size="sm" variant="outline" className="text-destructive" disabled={emptyTargets.length === 0 || items.length === 0 || emptyTrash.isPending} onClick={() => setEmptying(true)}>
+            <Trash2 className="h-3.5 w-3.5" />{accountId ? "Empty this account's trash…" : "Empty trash (all accounts)…"}</Button>
+        </div>)}
       {q && <p className="mb-3 text-sm text-muted-foreground">Search results for “{q}”{loc === "trash" ? " in Trash" : ""}.</p>}
 
       {selected.length > 0 && (
@@ -136,6 +204,8 @@ function DriveBrowser() {
           <b>{selected.length} selected</b>
           {loc !== "trash" && <Button size="sm" variant="outline" onClick={() => setAddTo(selected)}><Link2 className="h-3.5 w-3.5" />Add to virtual folder</Button>}
           {loc !== "trash" && <Button size="sm" variant="outline" onClick={async () => { for (const i of selected) if (i.can.trash) await trash.mutateAsync(i).catch(() => undefined); setSel(new Set()); }}><Trash2 className="h-3.5 w-3.5" />Move to trash</Button>}
+          {loc === "trash" && <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate({ items: selected.filter((i) => i.can.untrash), action: "restore" })}><RotateCcw className="h-3.5 w-3.5" />Restore</Button>}
+          {loc === "trash" && <Button size="sm" variant="destructive" disabled={bulk.isPending || !selected.some((i) => i.can.delete)} onClick={() => setBulkDeleting(selected.filter((i) => i.can.delete))}><Trash2 className="h-3.5 w-3.5" />Delete permanently…</Button>}
           <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
         </div>)}
 
@@ -148,19 +218,26 @@ function DriveBrowser() {
           <EmptyState icon={<FolderTree className="h-8 w-8" />} title={q ? "No matches" : loc === "trash" ? "Trash is empty" : (accounts.data ?? []).length === 0 ? "No accounts connected" : "Nothing in this folder"}>
             {!q && (accounts.data ?? []).some((a) => !a.initial_scan_complete) ? "Some accounts are still being indexed for the first time. Files appear as the scan progresses." : undefined}</EmptyState>
         ) : (
-          <div className="overflow-x-auto"><table className="w-full text-sm">
+          <div className="overflow-x-auto"><table ref={tableRef} className="min-w-full table-fixed text-sm" style={{ width: tableWidth }}>
+            <colgroup>
+              <col style={{ width: EDGE }} /><col style={{ width: widths.name }} />
+              <col className="hidden md:table-column" style={{ width: widths.account }} />
+              <col className="hidden sm:table-column" style={{ width: widths.modified }} />
+              <col style={{ width: widths.size }} /><col /><col style={{ width: EDGE }} />
+            </colgroup>
             <thead className="border-b bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr>
               <th className="w-10 px-4 py-2.5"><input type="checkbox" aria-label="Select all" checked={selected.length === items.length} onChange={(e) => setSel(e.target.checked ? new Set(items.map((i) => i.id)) : new Set())} /></th>
-              <th className="px-2 py-2.5">Name</th><th className="hidden px-2 py-2.5 md:table-cell">Account</th><th className="hidden px-2 py-2.5 sm:table-cell">Modified</th><th className="px-2 py-2.5 text-right">Size</th><th className="w-10" /></tr></thead>
+              {head("name", "Name")}{head("account", "Account", "hidden md:table-cell")}{head("modified", "Modified", "hidden sm:table-cell")}{head("size", "Size", "text-right")}<th /><th /></tr></thead>
             <tbody className="divide-y">{items.map((it) => (
               <tr key={it.id} className={cn("hover:bg-muted/40", sel.has(it.id) && "bg-accent/50")}>
                 <td className="px-4 py-2"><input type="checkbox" aria-label={`Select ${it.name}`} checked={sel.has(it.id)} onChange={(e) => { const n = new Set(sel); e.target.checked ? n.add(it.id) : n.delete(it.id); setSel(n); }} /></td>
-                <td className="max-w-0 px-2 py-2"><div className="flex items-center gap-2.5"><FileIcon mime={it.mime_type} />
-                  {it.is_folder ? <button className="truncate text-left font-medium hover:underline" onClick={() => openFolder(it)}>{it.name}</button> : <span className="truncate" title={it.name}>{it.name}</span>}
+                <td data-col="name" className="px-2 py-2"><div className="flex min-w-0 items-center gap-2.5"><FileIcon mime={it.mime_type} />
+                  {it.is_folder ? <button className="truncate text-left font-medium hover:underline" title={it.name} onClick={() => openFolder(it)}>{it.name}</button> : <span className="truncate" title={it.name}>{it.name}</span>}
                   {it.location === "SHARED_WITH_ME" && <span className="shrink-0 rounded bg-secondary px-1.5 text-[11px] text-muted-foreground">shared</span>}</div></td>
-                <td className="hidden px-2 py-2 md:table-cell"><AccountChip id={it.account_id} email={it.account_email} /></td>
-                <td className="hidden whitespace-nowrap px-2 py-2 text-muted-foreground sm:table-cell">{when(it.modified_time)}</td>
-                <td className="whitespace-nowrap px-2 py-2 text-right text-muted-foreground">{it.is_folder ? "—" : bytes(it.size)}</td>
+                <td data-col="account" className="hidden px-2 py-2 md:table-cell"><AccountChip id={it.account_id} email={it.account_email} /></td>
+                <td data-col="modified" className="hidden px-2 py-2 text-muted-foreground sm:table-cell"><span className="block truncate">{when(it.modified_time)}</span></td>
+                <td data-col="size" className="px-2 py-2 text-right text-muted-foreground"><span className="block truncate">{it.is_folder ? "—" : bytes(it.size)}</span></td>
+                <td />
                 <td className="px-2 py-2"><RowMenu items={menu(it)} label={`Actions for ${it.name}`} /></td></tr>))}</tbody></table></div>)}
         {!sharedRoot && total > 100 && (
           <div className="flex items-center justify-between border-t px-4 py-2.5 text-sm"><span className="text-muted-foreground">{total.toLocaleString()} items</span>
@@ -173,6 +250,13 @@ function DriveBrowser() {
         {moving && <FolderPicker accountId={moving.account_id} label="Move here" onCancel={() => setMoving(null)} onPick={(f) => move.mutate({ it: moving, dest: f.id ?? "root" })} />}</Dialog>
       <ConfirmDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} title="Delete permanently?" confirmLabel="Delete forever" danger busy={purge.isPending} onConfirm={() => deleting && purge.mutate(deleting)}>
         “{deleting?.name}” will be removed from Google Drive and can't be recovered. This can't be undone.</ConfirmDialog>
+      <ConfirmDialog open={!!bulkDeleting} onOpenChange={(o) => !o && setBulkDeleting(null)} title={`Delete ${bulkDeleting?.length ?? 0} item(s) permanently?`} confirmLabel="Delete forever" danger busy={bulk.isPending}
+        onConfirm={() => bulkDeleting && bulk.mutate({ items: bulkDeleting, action: "delete" })}>
+        The selected items will be removed from Google Drive and can't be recovered. This can't be undone.</ConfirmDialog>
+      <ConfirmDialog open={emptying} onOpenChange={setEmptying} title="Empty trash?" confirmLabel="Empty trash" danger busy={emptyTrash.isPending}
+        onConfirm={() => emptyTrash.mutate(emptyTargets.map((a) => a.id))}>
+        Everything in the Google Drive trash of {emptyTargets.length === 1 ? emptyTargets[0].email : `all ${emptyTargets.length} connected accounts`} will be deleted permanently. This can't be undone.
+        Shared-drive trash and files owned by other people aren't affected.</ConfirmDialog>
       <ExportDialog item={exporting} onClose={() => setExporting(null)} />
       <VirtualFolderPicker open={!!addTo} title="Add to virtual folder" confirmLabel="Add" folders={vtree.data ?? []} onClose={() => setAddTo(null)}
         onPick={(id) => addTo && addItems.mutate({ folderId: id, items: addTo })}

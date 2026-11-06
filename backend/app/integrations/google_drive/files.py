@@ -63,6 +63,11 @@ def delete_permanently(c: DriveClient, file_id: str) -> None:
     c.call(c.service().files().delete(fileId=file_id, supportsAllDrives=True))
 
 
+def empty_trash(c: DriveClient) -> None:
+    """Permanently deletes every item in this account's My Drive trash that the account owns."""
+    c.call(c.service().files().emptyTrash())
+
+
 def move(c: DriveClient, file_id: str, new_parent: str, old_parents: list[str]) -> dict:
     return c.call(c.service().files().update(
         fileId=file_id, addParents=new_parent, removeParents=",".join(old_parents), fields=FILE_FIELDS, supportsAllDrives=True))

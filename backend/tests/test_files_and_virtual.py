@@ -95,3 +95,18 @@ def test_files_api_pagination_and_filters(authed, indexed):
     r = authed.get("/api/files", params={"location": "my_drive", "page_size": 1}).json()
     assert r["total"] == 2 and len(r["items"]) == 1 and r["items"][0]["name"] == "Projects"
     assert authed.get("/api/files", params={"location": "bogus"}).status_code == 422
+
+
+def test_empty_trash_requires_confirm_and_removes_owned_my_drive_trash(authed, db, indexed, monkeypatch):
+    from app.integrations.google_drive import files as gfiles
+    calls = []
+    monkeypatch.setattr(gfiles, "empty_trash", lambda c: calls.append("empty"))
+    monkeypatch.setattr(gfiles, "about", lambda c: {"storageQuota": {"usage": "5", "limit": "100", "usageInDrive": "5", "usageInDriveTrash": "0"}})
+    sync.upsert_files(db, indexed, [meta("t2", "not-mine.txt", ["ROOT1"], owned=False, trashed=True),
+                                    meta("t3", "drive-trash.txt", ["DRIVE1"], drive="DRIVE1", trashed=True)])
+    r = authed.post(f"/api/files/{indexed.id}/trash/empty")
+    assert r.status_code == 400 and r.json()["error"]["code"] == "CONFIRM_REQUIRED" and calls == []
+    r = authed.post(f"/api/files/{indexed.id}/trash/empty?confirm=true")
+    assert r.status_code == 200 and r.json() == {"ok": True, "removed": 1} and calls == ["empty"]
+    db.expire_all()
+    assert sorted(names(db, trashed=True)) == ["drive-trash.txt", "not-mine.txt"]
