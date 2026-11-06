@@ -65,7 +65,7 @@ export default function Uploads() {
               <li key={j.id} className="space-y-2 px-5 py-4 text-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0"><p className="truncate font-medium">{j.filename}</p>
-                    <p className="text-xs text-muted-foreground">{bytes(j.size)}{j.account_id ? <> → <AccountChip id={j.account_id} email={j.account_email} /></> : " → account not chosen yet"}{j.destination_folder_name ? ` / ${j.destination_folder_name}` : ""}</p>
+                    <p className="text-xs text-muted-foreground">{bytes(j.size)}{j.account_id ? <> → <AccountChip id={j.account_id} email={j.account_email} /> · {j.destination_path ?? j.destination_folder_name ?? "My Drive"}</> : j.mode === "AUTO" ? " → Automatic: account not chosen yet" : " → account not chosen yet"}</p>
                     {j.virtual_folder_id && <p className="flex items-center gap-1 text-xs text-muted-foreground"><Link2 className="h-3 w-3" />{j.state === "COMPLETED" ? "Added to" : "Will be added to"} {vname(j.virtual_folder_id) ?? "a virtual folder that was removed"}</p>}</div>
                   <div className="flex items-center gap-2">
                     {j.state === "COMPLETED" ? <Badge tone="success"><CheckCircle2 className="h-3 w-3" />Done</Badge> : j.state === "FAILED" ? <Badge tone="danger"><AlertCircle className="h-3 w-3" />Failed</Badge> : j.state === "CANCELLED" ? <Badge>Cancelled</Badge> : <Badge tone="info">{j.cancel_requested ? "Cancelling" : STATE[j.state]}</Badge>}

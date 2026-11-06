@@ -38,6 +38,8 @@ worker claims job (atomic UPDATE QUEUED→VALIDATING)
               refresh quota, delete staged copy
   COMPLETED | FAILED (retryable) | CANCELLED
 ```
+**Where Automatic puts a file:** the first matching routing rule decides the account (and its folder, if the rule has one). Otherwise the first account in priority order with room is used, with its default folder from Settings, or My Drive. The reason is stored in `allocation_reason`, and the destination's full path (`destination_path`) is worked out from the local index for display.
+
 Safety properties (each covered by tests in `backend/tests/test_upload_runner.py`):
 
 | Situation | Behaviour |

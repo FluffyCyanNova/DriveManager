@@ -145,3 +145,32 @@ def parents_for(db: Session, files: list[DriveFile]) -> dict[str, dict | None]:
         name = names.get((f.account_id, pid)) if pid else None
         out[f.id] = {"id": pid, "name": name} if name else None
     return out
+
+
+def folder_path(db: Session, account_id: str, folder_google_id: str | None, max_depth: int = 30) -> str | None:
+    """Human path of a destination folder from the local index, e.g. "My Drive / Work / Projects" or
+    "Team Drive / Reports". None if the account has no root yet; the bare folder name if its parents aren't indexed."""
+    acc = db.get(Account, account_id)
+    if not acc:
+        return None
+    if not folder_google_id or folder_google_id in ("root", acc.root_folder_id):
+        return "My Drive"
+    names: list[str] = []
+    current = folder_google_id
+    for _ in range(max_depth):
+        row = db.scalar(select(DriveFile).where(DriveFile.account_id == account_id, DriveFile.google_file_id == current))
+        if row is None:
+            from app.database.models import Drive
+            drive = db.scalar(select(Drive).where(Drive.account_id == account_id, Drive.google_drive_id == current))
+            if drive:
+                names.append(drive.name)
+            break
+        names.append(row.name)
+        parent = db.scalar(select(DriveFileParent.parent_google_id).where(DriveFileParent.file_id == row.id))
+        if not parent:
+            break
+        if parent == acc.root_folder_id:
+            names.append("My Drive")
+            break
+        current = parent
+    return " / ".join(reversed(names)) if names else None

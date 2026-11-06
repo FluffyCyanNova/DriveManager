@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, FolderOpen, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, FolderOpen, Info, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { onError } from "@/components/Common";
@@ -129,6 +129,7 @@ function PanelRow({ row, status, progress, m, onResend, onOpenFolder }: {
         <div className="min-w-0 flex-1">
           <p className="truncate" title={name}>{name}</p>
           {detail && <p className="truncate text-xs text-muted-foreground">{detail}</p>}
+          <Destination row={row} m={m} />
         </div>
         {status === "active" && <Ring pct={pct} />}
         {status === "done" && <><Check className="h-4 w-4 text-success" aria-label="Done" />
@@ -140,6 +141,29 @@ function PanelRow({ row, status, progress, m, onResend, onOpenFolder }: {
       {status === "failed" && reason && <p className="ml-8 mt-1 text-xs text-destructive">{m.text(reason)}</p>}
       {choosing && job && <RetryChoices job={job} onDone={() => setChoosing(false)} />}
     </li>
+  );
+}
+
+/** "→ account · My Drive / Work / Projects" (or "Choosing account…" while Automatic decides), with the reason on hover. */
+function Destination({ row, m }: { row: Row; m: ReturnType<typeof useMask> }) {
+  const accounts = useAccounts();
+  const emailOf = (id: string | null | undefined) => (accounts.data ?? []).find((a) => a.id === id)?.email ?? null;
+  let text: string, reason: string | null = null;
+  if (row.kind === "local") {
+    const d = row.item.dest;
+    text = d.mode === "AUTO" ? "→ Automatic (account chosen once it reaches the server)" : `→ ${m.email(emailOf(d.accountId)) ?? "account"} · ${d.folder ? `My Drive / … / ${d.folder.name}` : "My Drive"}`;
+  } else {
+    const j = row.job;
+    if (!j) return null;
+    if (!j.account_id) text = j.state === "FAILED" ? "→ No account chosen" : "→ Choosing account…";
+    else text = `→ ${m.email(j.account_email) ?? "account"} · ${j.destination_path ?? j.destination_folder_name ?? "My Drive"}`;
+    reason = j.allocation_reason ? m.text(j.allocation_reason) : null;
+  }
+  return (
+    <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+      <span className="truncate" title={text}>{text}</span>
+      {reason && <span title={`Why: ${reason}`} aria-label={`Why: ${reason}`} className="shrink-0 cursor-help"><Info className="h-3 w-3" /></span>}
+    </p>
   );
 }
 

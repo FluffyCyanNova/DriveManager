@@ -90,6 +90,8 @@ Google redirect: `GET /auth/google/callback` (the OAuth redirect URI; browser on
 | POST | `/api/uploads/{job_id}/cancel` |
 | POST | `/api/uploads/{job_id}/retry` |
 
+Upload jobs include `destination_path` (e.g. `"My Drive / Work / Projects"`, or a shared drive's name first) once the account is known; it's `null` while Automatic hasn't chosen yet. `allocation_reason` explains Automatic's choice.
+
 `POST /api/uploads` is `multipart/form-data`: `file`, `mode` (`MANUAL` | `AUTO`), `account_id` (required for MANUAL), optional `folder_id` / `folder_name` (Drive destination), and optional `virtual_folder_id` (adds the finished file to that virtual folder; 404 `FOLDER_NOT_FOUND` if it doesn't exist).
 
 ### virtual-folders

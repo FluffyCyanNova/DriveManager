@@ -16,7 +16,7 @@ export interface FilePage { items: DriveItem[]; total: number; page: number; pag
 export interface SharedDrive { id: string; name: string; account_id: string; account_email: string }
 export interface UploadJob {
   id: string; filename: string; size: number; mime_type: string; mode: "MANUAL" | "AUTO"; state: string; account_id: string | null;
-  account_email: string | null; destination_folder_id: string | null; destination_folder_name: string | null; virtual_folder_id: string | null; bytes_uploaded: number;
+  account_email: string | null; destination_folder_id: string | null; destination_folder_name: string | null; destination_path?: string | null; virtual_folder_id: string | null; bytes_uploaded: number;
   progress: number; google_file_id: string | null; error_code: string | null; error_message: string | null; allocation_reason: string | null;
   attempts: number; cancel_requested: boolean; created_at: string; finished_at: string | null; retryable: boolean;
 }

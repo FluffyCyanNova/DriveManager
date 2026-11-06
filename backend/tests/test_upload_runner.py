@@ -215,3 +215,19 @@ def test_upload_still_completes_if_virtual_folder_was_deleted(db, account, g):
 def test_upload_api_rejects_unknown_virtual_folder(authed, account, g):
     r = authed.post("/api/uploads", files={"file": ("a.txt", b"hello")}, data={"mode": "MANUAL", "account_id": account.id, "virtual_folder_id": "nope"})
     assert r.status_code == 404 and r.json()["error"]["code"] == "FOLDER_NOT_FOUND"
+
+
+def test_upload_shows_full_destination_path(authed, db, account, g):
+    from app.services import sync
+    F = "application/vnd.google-apps.folder"
+    def folder(i, name, parent):
+        return {"id": i, "name": name, "mimeType": F, "parents": [parent], "ownedByMe": True, "capabilities": {"canAddChildren": True}}
+    sync.upsert_files(db, account, [folder("W", "Work", "ROOT1"), folder("P", "Projects", "W")])
+    root_job = authed.post("/api/uploads", files={"file": ("a.txt", b"hi")}, data={"mode": "MANUAL", "account_id": account.id}).json()
+    deep_job = authed.post("/api/uploads", files={"file": ("b.txt", b"hi")}, data={"mode": "MANUAL", "account_id": account.id, "folder_id": "P", "folder_name": "Projects"}).json()
+    auto_job = authed.post("/api/uploads", files={"file": ("c.txt", b"hi")}, data={"mode": "AUTO"}).json()
+    assert root_job["destination_path"] == "My Drive"
+    assert deep_job["destination_path"] == "My Drive / Work / Projects"
+    assert auto_job["destination_path"] is None          # account not chosen yet
+    listed = {j["filename"]: j["destination_path"] for j in authed.get("/api/uploads").json()}
+    assert listed["b.txt"] == "My Drive / Work / Projects"
