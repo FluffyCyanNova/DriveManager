@@ -111,6 +111,9 @@ class DownloadStream:
     mime: str
     size: int | None
 
+    def close(self) -> None:
+        self.response.close()
+
     def iter(self, chunk: int = 1024 * 256) -> Iterator[bytes]:
         try:
             yield from self.response.iter_content(chunk_size=chunk)

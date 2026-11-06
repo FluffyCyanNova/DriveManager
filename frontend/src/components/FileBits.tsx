@@ -24,12 +24,12 @@ export function FileIcon({ mime, className = "h-4 w-4" }: { mime: string; classN
 /** Checks the download will work first (so errors show as toasts, not a JSON page), then triggers the browser download. */
 export async function startDownload(accountId: string, fileId: string, format?: string) {
   const url = downloadUrl(accountId, fileId, format);
-  const ac = new AbortController();
+  // Check first (check=true: no file data, not counted in Activity) so problems show as a toast instead of a broken
+  // browser download. Only the real download below is recorded.
   try {
-    const r = await fetch(url, { signal: ac.signal, credentials: "same-origin" });
+    const r = await fetch(`${url}${url.includes("?") ? "&" : "?"}check=true`, { credentials: "same-origin" });
     if (!r.ok) { const j = await r.json().catch(() => null); toast.error(j?.error?.message ?? "Download failed."); return; }
-    ac.abort();
-  } catch (e) { if (!(e instanceof DOMException)) { toast.error(e instanceof ApiError ? e.message : "Download failed."); return; } }
+  } catch (e) { toast.error(e instanceof ApiError ? e.message : "Download failed."); return; }
   const a = document.createElement("a");
   a.href = url; a.download = ""; document.body.appendChild(a); a.click(); a.remove();
 }

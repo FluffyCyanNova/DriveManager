@@ -144,3 +144,32 @@ def test_permanent_delete_of_folder_removes_owned_contents_from_index(authed, db
     status = dict(db.execute(select(DriveFile.google_file_id, DriveFile.status)).all())
     assert [status[k] for k in ("f1", "c1", "img", "sub", "deep")] == ["REMOVED"] * 5
     assert status["theirs"] == "ACTIVE" and status["r1"] == "ACTIVE"
+
+
+def test_download_check_does_not_record_activity(authed, db, indexed, monkeypatch):
+    """The UI first checks a download can start (to show errors as a toast), then starts the real one.
+    Only the real download may appear in Activity; the check must not count as a second download."""
+    from app.database.models import FileEvent
+    from app.integrations.google_drive import files as gfiles, transfer
+    from app.services import file_ops
+
+    class FakeResp:
+        closed = False
+        def iter_content(self, chunk_size):
+            yield b"hello"
+        def close(self):
+            FakeResp.closed = True
+
+    monkeypatch.setattr(file_ops, "DriveClient", lambda acc: object())
+    monkeypatch.setattr(gfiles, "get_file", lambda c, fid, fields=None: {"id": fid, "name": "root.txt", "mimeType": "text/plain", "size": "5"})
+    monkeypatch.setattr(transfer, "open_download", lambda c, meta, fmt: transfer.DownloadStream(FakeResp(), meta["name"], meta["mimeType"], 5))
+    downloads = lambda: db.query(FileEvent).filter(FileEvent.event_type == "download").count()
+
+    r = authed.get(f"/api/files/{indexed.id}/r1/download", params={"check": "true"})
+    assert r.status_code == 200 and r.json() == {"ok": True, "filename": "root.txt"}
+    assert FakeResp.closed, "the check must close the Google stream it opened"
+    assert downloads() == 0
+
+    r = authed.get(f"/api/files/{indexed.id}/r1/download")
+    assert r.status_code == 200 and r.content == b"hello"
+    assert downloads() == 1

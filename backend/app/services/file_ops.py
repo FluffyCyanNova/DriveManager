@@ -153,7 +153,8 @@ def create_folder(db: Session, account_id: str, name: str, parent_id: str | None
     return _done(db, acc, meta, "create_folder")
 
 
-def open_download(db: Session, account_id: str, file_id: str, fmt: str | None):
+def open_download(db: Session, account_id: str, file_id: str, fmt: str | None, record: bool = True):
+    """Open the Google download stream. `record=False` is for the UI's pre-check, which must not count as a download."""
     acc = accounts.get_account(db, account_id)
     row = _local(db, acc, file_id)
     if row.is_folder:
@@ -163,5 +164,6 @@ def open_download(db: Session, account_id: str, file_id: str, fmt: str | None):
     with accounts.drive_errors(db, acc):
         meta = gfiles.get_file(client, row.shortcut_target_id or file_id, "id,name,mimeType,size")
         stream = transfer.open_download(client, meta, fmt)
-    events.record_activity(db, "download", account=acc, google_file_id=file_id, file_name=row.name)
+    if record:
+        events.record_activity(db, "download", account=acc, google_file_id=file_id, file_name=row.name)
     return stream

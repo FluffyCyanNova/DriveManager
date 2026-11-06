@@ -68,7 +68,11 @@ export default function Layout() {
       <aside className="shrink-0 border-b bg-card md:sticky md:top-0 md:h-screen md:w-56 md:border-b-0 md:border-r">
         <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
           <img src="/favicon.svg" alt="" className="h-7 w-7" />
-          <span className="text-[15px] font-semibold tracking-tight">DriveManager</span>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="text-[15px] font-semibold tracking-tight">DriveManager</span>
+            <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
+              className="w-fit text-xs text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
+          </div>
           <div className="ml-auto flex gap-1 md:hidden">
             <button onClick={syncAll} disabled={busy || connected.length === 0} className="rounded p-1.5 hover:bg-accent disabled:opacity-60" aria-label={syncLabel} title={syncLabel}><RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} /></button>
             <button onClick={toggleHideEmails} className="rounded p-1.5 hover:bg-accent" aria-label={hideLabel} aria-pressed={m.hide} title={hideLabel}>{m.hide ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
@@ -113,15 +117,13 @@ export default function Layout() {
           </div>
         </div>
       </aside>
-      <main className="flex min-w-0 flex-1 flex-col md:min-h-screen">
+      <main className="min-w-0 flex-1">
         {needAuth.length > 0 && (
           <Banner tone="danger" to="/accounts">{needAuth.map((a) => m.email(a.email)).join(", ")} {needAuth.length > 1 ? "need" : "needs"} to be reconnected to Google. Syncing and uploads for {needAuth.length > 1 ? "them are" : "it is"} paused.</Banner>
         )}
         {health.data && !health.data.worker.alive && health.data.worker.enabled && <Banner tone="warn">The background worker isn't responding. Uploads and sync are paused until it is back (run <code>docker compose logs worker</code>).</Banner>}
         {health.data && !health.data.encryption_key_ok && <Banner tone="danger">The encryption key doesn't match this database, so stored Google credentials can't be read. Restore the original APP_ENCRYPTION_KEY from your backup.</Banner>}
-        <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-8 md:py-8"><Outlet /></div>
-        {/* Credit: bottom left of the page, below the content (pushed to the window bottom on short pages). */}
-        <footer className="mx-auto w-full max-w-6xl px-4 pb-4 text-xs text-muted-foreground/80 md:px-8">by FluffyCyanNova {"<3"}</footer>
+        <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8"><Outlet /></div>
       </main>
       <Toaster />
     </div>
