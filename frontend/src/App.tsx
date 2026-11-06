@@ -12,7 +12,26 @@ import Login from "@/pages/Login";
 import SettingsPage from "@/pages/Settings";
 import Uploads from "@/pages/Uploads";
 
-const Analytics = lazy(() => import("@/pages/Analytics"));
+/**
+ * Loads a page's code on demand. After an update (scripts\update.ps1) a tab that was already open still has the old
+ * file names, which no longer exist on the server, so loading fails. Reload once to pick up the new version; if that
+ * already happened in the last 30 seconds, show a message instead of reloading in a loop.
+ */
+const RELOADED = "dm-chunk-reload";
+function lazyPage(load: () => Promise<{ default: React.ComponentType }>) {
+  return lazy(() => load().catch(() => {
+    let recent = false;
+    try { recent = Date.now() - Number(sessionStorage.getItem(RELOADED) ?? 0) < 30_000; sessionStorage.setItem(RELOADED, String(Date.now())); } catch { /* storage unavailable */ }
+    if (!recent) { window.location.reload(); return new Promise<never>(() => {}); }   // keeps the spinner up until the reload happens
+    return { default: () => (
+      <div className="flex flex-col items-center gap-3 py-16 text-center text-sm text-muted-foreground">
+        <p>This page couldn't be loaded. DriveManager may have just been updated, or the server isn't reachable.</p>
+        <button className="rounded-md border px-3 py-1.5 text-foreground hover:bg-accent" onClick={() => window.location.reload()}>Reload</button>
+      </div>) };
+  }));
+}
+
+const Analytics = lazyPage(() => import("@/pages/Analytics"));
 
 export default function App() {
   const { status, set } = useAuth();
