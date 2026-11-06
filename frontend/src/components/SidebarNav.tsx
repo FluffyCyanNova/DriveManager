@@ -173,7 +173,7 @@ export function SidebarNav() {
     <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible md:pb-0">
       {/* Pinned group. On phones it sticks to the left on a solid strip that covers items scrolling underneath. */}
       {sb.pinned.length > 0 && (
-        <div className="sticky left-0 z-10 -ml-2 flex shrink-0 gap-1 bg-card pl-2 pr-1 after:pointer-events-none after:absolute after:-right-4 after:top-0 after:h-full after:w-4 after:bg-gradient-to-r after:from-card after:to-transparent after:content-[''] md:static md:m-0 md:flex-col md:p-0 md:pb-1 md:after:hidden">
+        <div className="sticky -left-2 z-10 -ml-2 flex shrink-0 gap-1 bg-card pl-2 pr-1 after:pointer-events-none after:absolute after:-right-4 after:top-0 after:h-full after:w-4 after:bg-gradient-to-r after:from-card after:to-transparent after:content-[''] md:static md:m-0 md:flex-col md:p-0 md:pb-1 md:after:hidden">
           {sb.pinned.map((k) => row(k, true))}
         </div>
       )}

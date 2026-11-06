@@ -67,12 +67,13 @@ export default function Layout() {
     <div className="flex min-h-full flex-col md:flex-row">
       <aside className="shrink-0 border-b bg-card md:sticky md:top-0 md:h-screen md:w-56 md:border-b-0 md:border-r">
         <div className="flex items-center gap-2.5 px-4 py-3.5 md:py-5">
-          <img src="/favicon.svg" alt="" className="h-7 w-7" />
+          <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub" aria-label="DriveManager on GitHub"
+            className="shrink-0 rounded-md transition-opacity hover:opacity-80"><img src="/favicon.svg" alt="" className="h-7 w-7" /></a>
           <div className={cn("flex min-w-0 flex-col leading-tight", mobileOpen && "hidden md:flex")}>
             <a href="https://github.com/FluffyCyanNova/DriveManager" target="_blank" rel="noopener noreferrer" title="DriveManager on GitHub"
-              className="w-fit text-[15px] font-semibold tracking-tight hover:text-primary hover:underline">DriveManager</a>
+              className="w-fit text-lg font-semibold leading-tight tracking-tight hover:text-primary hover:underline">DriveManager</a>
             <a href="https://github.com/FluffyCyanNova" target="_blank" rel="noopener noreferrer" title="FluffyCyanNova on GitHub"
-              className="w-fit text-xs text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
+              className="w-fit text-[11px] text-muted-foreground hover:text-primary hover:underline">@FluffyCyanNova</a>
           </div>
           {/* Phones: the search replaces the title and buttons in the top bar instead of adding a full-width row. */}
           {mobileOpen && <>
